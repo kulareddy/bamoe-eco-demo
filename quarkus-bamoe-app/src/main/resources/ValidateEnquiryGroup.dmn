@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" xmlns:kie="https://kie.org/dmn/extensions/1.0" expressionLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" namespace="https://kie.org/dmn/_BFE1FDCA-A949-4696-ACB4-5A56156C6356" id="_DA1E14B4-1D4C-4FC7-988D-8F3AE83FF007" name="DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675">
+  <itemDefinition id="_B63485FF-3C20-4318-A380-81C6A5062086" name="EnquiryType" isCollection="false" typeLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/">
+    <description>EnquiryType</description>
+    <typeRef>string</typeRef>
+    <typeConstraint id="_ED5CCB9A-768C-4007-B49C-4352F8D2E01F" kie:constraintType="enumeration">
+      <text>&quot;TECH_SUPPORT&quot;, &quot;BUSINESS_CASE&quot;, &quot;INCIDENT&quot;</text>
+    </typeConstraint>
+  </itemDefinition>
+  <decision name="EnquiryGroup" id="_D3975A0D-B651-47A1-AF71-045472DAC39E">
+    <variable id="_7A3D062E-812B-4F2C-A18C-4FC6E952580E" typeRef="string" name="EnquiryGroup" />
+    <informationRequirement id="_D9260EB7-A4C6-4F89-B74D-925064611AA2">
+      <requiredInput href="#_0603A9FE-1E3D-408A-9081-259D7BCFE75A" />
+    </informationRequirement>
+    <decisionTable id="_A6535811-A0DE-4274-BC05-4C60C221E131" typeRef="string" hitPolicy="UNIQUE" label="EnquiryGroup">
+      <input id="_3F7A2804-FCDD-4C4F-9919-8A72317E8428">
+        <inputExpression id="_18630D20-F6DF-4C7A-988B-A104BCBB450A" typeRef="EnquiryType">
+          <text>EnquiryType</text>
+        </inputExpression>
+      </input>
+      <output id="_87E8F124-27D6-4980-A328-F956754D25D9" />
+      <annotation name="Annotations" />
+      <rule id="_C122BA0A-5377-45B9-A679-00F49BFE596C">
+        <inputEntry id="_95F8095A-16A8-4C1A-A4A0-7C4E4AED3678">
+          <text>&quot;TECH_SUPPORT&quot;</text>
+        </inputEntry>
+        <outputEntry id="_C550294C-6C12-45EC-A074-04FD05BC4682">
+          <text>&quot;TechSupport&quot;</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>// Your annotations here</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_00CF6CA3-1A5E-4A3C-A6EE-5E3505FD3908">
+        <inputEntry id="_61661499-2672-4AF8-99EE-9F3CFC1ABCB6">
+          <text>&quot;BUSINESS_CASE&quot;</text>
+        </inputEntry>
+        <outputEntry id="_4525F4A6-135E-4D63-BCB7-837C26CA23B6">
+          <text>&quot;BusinessSupport&quot;</text>
+        </outputEntry>
+        <annotationEntry>
+          <text></text>
+        </annotationEntry>
+      </rule>
+      <rule id="_1AA5BB07-7D5A-4388-B36D-770CF2B298F1">
+        <inputEntry id="_87DA7C82-6154-4817-A180-C7535FAD3DE2">
+          <text>&quot;INCIDENT&quot;</text>
+        </inputEntry>
+        <outputEntry id="_B0097D7A-8E57-477B-A173-C21EAA78A23B">
+          <text>&quot;Analysts&quot;</text>
+        </outputEntry>
+        <annotationEntry>
+          <text></text>
+        </annotationEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <inputData name="EnquiryType" id="_0603A9FE-1E3D-408A-9081-259D7BCFE75A">
+    <variable name="EnquiryType" id="_D4F1AE1F-E27B-4FB3-BDF6-3D82369FE381" typeRef="EnquiryType" />
+  </inputData>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_EAB04376-8B73-4B03-8523-058A1699D5C2" name="Default DRD" useAlternativeInputDataShape="false">
+      <di:extension>
+        <kie:ComponentsWidthsExtension>
+          <kie:ComponentWidths dmnElementRef="_A6535811-A0DE-4274-BC05-4C60C221E131">
+            <kie:width>60</kie:width>
+            <kie:width>168</kie:width>
+            <kie:width>159</kie:width>
+            <kie:width>240</kie:width>
+          </kie:ComponentWidths>
+        </kie:ComponentsWidthsExtension>
+      </di:extension>
+      <dmndi:DMNShape id="_31A8274D-4392-46EB-ABBF-CF84A60FD63C" dmnElementRef="_0603A9FE-1E3D-408A-9081-259D7BCFE75A" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="180" y="180" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_B8794603-38D5-4083-A7D5-1B9965F26468" dmnElementRef="_D3975A0D-B651-47A1-AF71-045472DAC39E" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="180" y="0" width="160" height="80" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_DF02BB04-8C9A-4B62-96D8-2A666E901B3A-AUTO-TARGET" dmnElementRef="_D9260EB7-A4C6-4F89-B74D-925064611AA2" sourceElement="_31A8274D-4392-46EB-ABBF-CF84A60FD63C" targetElement="_B8794603-38D5-4083-A7D5-1B9965F26468">
+        <di:waypoint x="260" y="220" />
+        <di:waypoint x="260" y="40" />
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

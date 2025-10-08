@@ -1,0 +1,1371 @@
+{
+  "info": {
+    "name": "Enquiry API Collection",
+    "description": "Postman collection for Spring Boot Enquiry API with actual endpoints from OpenAPI spec",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get Token - Client Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    console.log('✅ Token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_url}}"
+              ],
+              "path": [
+                "realms",
+                "{{keycloak_realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Get access token using client credentials flow for Spring Boot application"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables for reporter",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
+                  "    console.log('✅ Admin token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{admin_username}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{admin_password}}",
+                  "type": "text"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_url}}"
+              ],
+              "path": [
+                "realms",
+                "{{keycloak_realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Get access token using password grant flow for admin user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Manager)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables for reporter",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
+                  "    console.log('✅ Manager token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "manager1"
+                },
+                {
+                  "key": "password",
+                  "value": "manager123"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables for reporter",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
+                  "    console.log('✅ User token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "user1"
+                },
+                {
+                  "key": "password",
+                  "value": "user123"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Analyst)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    console.log('✅ Analyst token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "analyst1"
+                },
+                {
+                  "key": "password",
+                  "value": "analyst123"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Tech1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    console.log('✅ Tech1 token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "tech1"
+                },
+                {
+                  "key": "password",
+                  "value": "tech123"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Tech2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    console.log('✅ Tech2 token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "tech2"
+                },
+                {
+                  "key": "password",
+                  "value": "tech456"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Business1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    console.log('✅ Business1 token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "business1"
+                },
+                {
+                  "key": "password",
+                  "value": "business123"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Token - Password Grant (Business2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
+                  "    ",
+                  "    console.log('✅ Business2 token obtained');",
+                  "} else { console.log('❌ Auth failed'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{spring_boot_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{spring_boot_client_secret}}"
+                },
+                {
+                  "key": "username",
+                  "value": "business2"
+                },
+                {
+                  "key": "password",
+                  "value": "business456"
+                },
+                {
+                  "key": "scope",
+                  "value": "{{spring_boot_scope}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Enquiry Management",
+      "item": [
+        {
+          "name": "Get All Enquiries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries"
+              ]
+            },
+            "description": "Get all enquiries",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Enquiry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.id) {",
+                  "        pm.collectionVariables.set('enquiry_id', response.id);",
+                  "        console.log('✅ Enquiry created with ID:', response.id);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Enquiry creation failed with status:', pm.response.code);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test Enquiry\",\n  \"description\": \"This is a test enquiry created by user\",\n  \"type\": \"TECH_SUPPORT\",\n  \"status\": \"OPEN\",\n  \"reporter\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries"
+              ]
+            },
+            "description": "Create a new enquiry",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Enquiry by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}"
+              ]
+            },
+            "description": "Get a specific enquiry by ID",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Enquiry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{enquiry_id}}\",\n  \"title\": \"Updated Enquiry\",\n  \"description\": \"This is an updated enquiry\",\n  \"type\": \"TECH_SUPPORT\",\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}"
+              ]
+            },
+            "description": "Update an existing enquiry",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Enquiry",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}"
+              ]
+            },
+            "description": "Delete an enquiry",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Enquiry Comments",
+      "item": [
+        {
+          "name": "Get Enquiry Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/comments",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "comments"
+              ]
+            },
+            "description": "Get comments for a specific enquiry",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Comment to Enquiry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"This is a test comment on the enquiry\",\n  \"author\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/comments",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "comments"
+              ]
+            },
+            "description": "Add a comment to an enquiry",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{comment_id}}\",\n  \"comment\": \"This is an updated comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/comments/{{comment_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "comments",
+                "{{comment_id}}"
+              ]
+            },
+            "description": "Update a comment",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/comments/{{comment_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "comments",
+                "{{comment_id}}"
+              ]
+            },
+            "description": "Delete a comment",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Enquiry Status Management",
+      "item": [
+        {
+          "name": "Update Enquiry Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/status?status=IN_PROGRESS",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "IN_PROGRESS",
+                  "description": "Status values: OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED"
+                }
+              ]
+            },
+            "description": "Update enquiry status",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve Enquiry",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/resolve?resolutionNotes=Issue has been resolved successfully",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "resolve"
+              ],
+              "query": [
+                {
+                  "key": "resolutionNotes",
+                  "value": "Issue has been resolved successfully by {{current_username}} ({{current_email}})",
+                  "description": "Notes about the resolution with resolver info"
+                }
+              ]
+            },
+            "description": "Resolve an enquiry with resolution notes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Enquiry",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{current_username}}\",\n  \"email\": \"{{current_email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/{{enquiry_id}}/assign",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "{{enquiry_id}}",
+                "assign"
+              ]
+            },
+            "description": "Assign an enquiry to a user",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Process Integration",
+      "item": [
+        {
+          "name": "Get Enquiry by Process Instance ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/api/enquiries/process/{{process_instance_id}}",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "api",
+                "enquiries",
+                "process",
+                "{{process_instance_id}}"
+              ]
+            },
+            "description": "Get enquiry by process instance ID",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cross-Service API Calls",
+      "item": [
+        {
+          "name": "Spring Boot -> Quarkus API Call",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Forwarded-For",
+                "value": "spring-boot-service",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/docs/openapi.json",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "docs",
+                "openapi.json"
+              ]
+            },
+            "description": "Spring Boot service calling Quarkus API with Spring Boot client credentials",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "keycloak_url",
+      "value": "http://localhost:9180",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_realm",
+      "value": "quarkus-realm",
+      "type": "string"
+    },
+    {
+      "key": "quarkus_base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "spring_boot_base_url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "spring_boot_client_id",
+      "value": "spring-boot-api",
+      "type": "string"
+    },
+    {
+      "key": "spring_boot_client_secret",
+      "value": "spring-boot-secret",
+      "type": "string"
+    },
+    {
+      "key": "spring_boot_scope",
+      "value": "openid profile email",
+      "type": "string"
+    },
+    {
+      "key": "spring_boot_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "admin123",
+      "type": "string"
+    },
+    {
+      "key": "manager_username",
+      "value": "manager1",
+      "type": "string"
+    },
+    {
+      "key": "manager_password",
+      "value": "manager123",
+      "type": "string"
+    },
+    {
+      "key": "user_username",
+      "value": "user1",
+      "type": "string"
+    },
+    {
+      "key": "user_password",
+      "value": "user123",
+      "type": "string"
+    },
+    {
+      "key": "analyst_username",
+      "value": "analyst1",
+      "type": "string"
+    },
+    {
+      "key": "analyst_password",
+      "value": "analyst123",
+      "type": "string"
+    },
+    {
+      "key": "tech1_username",
+      "value": "tech1",
+      "type": "string"
+    },
+    {
+      "key": "tech1_password",
+      "value": "tech123",
+      "type": "string"
+    },
+    {
+      "key": "tech2_username",
+      "value": "tech2",
+      "type": "string"
+    },
+    {
+      "key": "tech2_password",
+      "value": "tech456",
+      "type": "string"
+    },
+    {
+      "key": "business1_username",
+      "value": "business1",
+      "type": "string"
+    },
+    {
+      "key": "business1_password",
+      "value": "business123",
+      "type": "string"
+    },
+    {
+      "key": "business2_username",
+      "value": "business2",
+      "type": "string"
+    },
+    {
+      "key": "business2_password",
+      "value": "business456",
+      "type": "string"
+    },
+    {
+      "key": "user_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "enquiry_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "comment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "process_instance_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_email",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

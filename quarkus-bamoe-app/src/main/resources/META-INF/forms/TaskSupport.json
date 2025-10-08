@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Task Support Form",
+  "description": "Form for handling enquiry support tasks",
+  "properties": {
+    "enquiry": {
+      "type": "object",
+      "title": "Enquiry Details",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Enquiry ID",
+          "readOnly": true
+        },
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "readOnly": true,
+          "format": "textarea"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "readOnly": true,
+          "enum": ["TECH_SUPPORT", "BUSINESS_CASE", "INCIDENT"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Current Status",
+          "readOnly": true,
+          "enum": ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED", "RE_OPEN"]
+        },
+        "reporter": {
+          "type": "object",
+          "title": "Reporter",
+          "readOnly": true,
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name"
+            },
+            "email": {
+              "type": "string",
+              "title": "Email"
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created",
+          "format": "date-time",
+          "readOnly": true
+        }
+      }
+    },
+    "enquiryStatus": {
+      "type": "string",
+      "title": "New Status",
+      "description": "Select the new status for this enquiry",
+      "enum": ["IN_PROGRESS", "RESOLVED", "CLOSED"],
+      "enumNames": ["Mark as In Progress", "Mark as Resolved", "Close Enquiry"],
+      "default": "IN_PROGRESS"
+    },
+    "resolutionNotes": {
+      "type": "string",
+      "title": "Resolution Notes",
+      "description": "Add notes about the resolution or progress",
+      "format": "textarea"
+    }
+  },
+  "required": ["enquiryStatus"],
+  "uiSchema": {
+    "enquiry": {
+      "ui:readonly": true,
+      "ui:widget": "readonly",
+      "description": {
+        "ui:widget": "textarea"
+      },
+      "reporter": {
+        "ui:readonly": true
+      }
+    },
+    "enquiryStatus": {
+      "ui:widget": "select",
+      "ui:placeholder": "Select new status..."
+    },
+    "resolutionNotes": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 4
+      }
+    }
+  }
+}

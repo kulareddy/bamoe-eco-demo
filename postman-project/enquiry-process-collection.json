@@ -1,0 +1,1176 @@
+{
+  "info": {
+    "name": "Enquiry Process Collection",
+    "description": "Clean collection for Quarkus BAMOE Enquiry Process API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{user_access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "quarkus_base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_base_url",
+      "value": "http://localhost:9180",
+      "type": "string"
+    },
+    {
+      "key": "user_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "enquiry_process_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get Token - Client Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    console.log('\u2705 Client credentials token obtained');",
+                  "} else {",
+                  "    console.log('\u274c Client credentials auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "admin"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Admin token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Admin auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "manager1"
+                },
+                {
+                  "key": "password",
+                  "value": "manager123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Manager token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Manager auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "user1"
+                },
+                {
+                  "key": "password",
+                  "value": "user123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 User token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c User auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Analyst)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "analyst1"
+                },
+                {
+                  "key": "password",
+                  "value": "analyst123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Analyst token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Analyst auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Tech1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "tech1"
+                },
+                {
+                  "key": "password",
+                  "value": "tech123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Tech1 token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Tech1 auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Tech2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "tech2"
+                },
+                {
+                  "key": "password",
+                  "value": "tech456"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Tech2 token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Tech2 auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Business1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "business1"
+                },
+                {
+                  "key": "password",
+                  "value": "business123"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Business1 token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Business1 auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Token - Password Grant (Business2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "username",
+                  "value": "business2"
+                },
+                {
+                  "key": "password",
+                  "value": "business456"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Business2 token obtained');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Business2 auth failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh User Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "quarkus-bamoe-app"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "quarkus-bamoe-secret"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refresh_token}}"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_base_url}}/realms/quarkus-realm/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_base_url}}"
+              ],
+              "path": [
+                "realms",
+                "quarkus-realm",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('user_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    console.log('\u2705 Token refreshed successfully');",
+                  "    console.log('Username:', payload.preferred_username);",
+                  "    console.log('Email:', payload.email);",
+                  "    console.log('Groups:', payload.groups);",
+                  "} else {",
+                  "    console.log('\u274c Token refresh failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Enquiry Process Management",
+      "item": [
+        {
+          "name": "Create Enquiry Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"User Enquiry Process\",\n    \"description\": \"This enquiry process is created by a user\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('enquiry_process_id', response.id);",
+                  "    console.log('\u2705 Enquiry process created with ID:', response.id);",
+                  "    console.log('\ud83d\udcdd Process instance ID:', response.enquiry.processInstanceId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Enquiry Process",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Enquiry Process",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry Process\",\n    \"description\": \"This enquiry process has been updated\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Enquiry Process",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Event Subprocess",
+      "item": [
+        {
+          "name": "Trigger Event Subprocess",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"processEvent\",\n  \"eventData\": {\n    \"action\": \"statusChange\",\n    \"newStatus\": \"IN_PROGRESS\",\n    \"reason\": \"Process status updated via event subprocess\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "Event_Sub-process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83c\udfaf Event Subprocess Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Event subprocess triggered successfully');",
+                  "} else {",
+                  "    console.log('\u274c Event subprocess failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger Reopen Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"reopenEvent\",\n  \"eventData\": {\n    \"action\": \"reopen\",\n    \"reason\": \"Enquiry reopened by user\",\n    \"reopenedBy\": \"{{current_username}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "Event_Sub-process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udd04 Reopen Event Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Reopen event triggered successfully');",
+                  "} else {",
+                  "    console.log('\u274c Reopen event failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger Close Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"closeEvent\",\n  \"eventData\": {\n    \"action\": \"close\",\n    \"reason\": \"Enquiry closed by user\",\n    \"closedBy\": \"{{current_username}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "Event_Sub-process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udd12 Close Event Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Close event triggered successfully');",
+                  "} else {",
+                  "    console.log('\u274c Close event failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger Resolve Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"resolveEvent\",\n  \"eventData\": {\n    \"action\": \"resolve\",\n    \"reason\": \"Enquiry resolved by user\",\n    \"resolvedBy\": \"{{current_username}}\",\n    \"resolution\": \"Issue has been successfully resolved\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "Event_Sub-process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\u2705 Resolve Event Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Resolve event triggered successfully');",
+                  "} else {",
+                  "    console.log('\u274c Resolve event failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Comment Management",
+      "item": [
+        {
+          "name": "Add Comment Signal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"This is a test comment from user\",\n  \"commentedBy\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/comment",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "comment"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udcac Comment Signal Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Comment signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Comment signal failed:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Task Management",
+      "item": [
+        {
+          "name": "Get Process Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/tasks",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}",
+                "tasks"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

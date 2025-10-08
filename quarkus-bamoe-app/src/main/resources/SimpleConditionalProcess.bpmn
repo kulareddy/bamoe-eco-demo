@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                   xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                   xmlns:drools="http://www.jboss.org/drools"
+                   id="_SimpleConditionalExample" 
+                   targetNamespace="http://www.omg.org/bpmn20"
+                   exporter="jBPM Process Modeler" 
+                   exporterVersion="2.0">
+
+  <!-- Item Definitions -->
+  <bpmn2:itemDefinition id="_enquiryStatusItem" structureRef="com.example.bamoe.model.EnquiryStatus"/>
+  <bpmn2:itemDefinition id="_enquiryItem" structureRef="com.example.bamoe.model.Enquiry"/>
+
+  <!-- Simple Process with Conditional Events -->
+  <bpmn2:process id="SimpleConditionalProcess" 
+                 drools:packageName="com.example" 
+                 drools:version="1.0" 
+                 name="Simple Conditional Process" 
+                 isExecutable="true" 
+                 processType="Public">
+
+    <!-- Process Variables -->
+    <bpmn2:property id="enquiry" itemSubjectRef="_enquiryItem" name="enquiry"/>
+    <bpmn2:property id="enquiryStatus" itemSubjectRef="_enquiryStatusItem" name="enquiryStatus"/>
+
+    <!-- Start Event -->
+    <bpmn2:startEvent id="_startEvent" name="Start Process">
+      <bpmn2:outgoing>_startToGateway</bpmn2:outgoing>
+    </bpmn2:startEvent>
+
+    <!-- Event-Based Gateway -->
+    <bpmn2:eventBasedGateway id="_eventGateway" name="Wait for Status Change" gatewayDirection="Diverging">
+      <bpmn2:incoming>_startToGateway</bpmn2:incoming>
+      <bpmn2:outgoing>_gatewayToReopen</bpmn2:outgoing>
+      <bpmn2:outgoing>_gatewayToResolved</bpmn2:outgoing>
+      <bpmn2:outgoing>_gatewayToClosed</bpmn2:outgoing>
+      <bpmn2:outgoing>_gatewayToInProgress</bpmn2:outgoing>
+    </bpmn2:eventBasedGateway>
+
+    <!-- Conditional Events for Different Statuses -->
+    
+    <!-- RE_OPEN Conditional Event -->
+    <bpmn2:intermediateCatchEvent id="_reopenEvent" name="Enquiry Reopened">
+      <bpmn2:incoming>_gatewayToReopen</bpmn2:incoming>
+      <bpmn2:outgoing>_reopenToTask</bpmn2:outgoing>
+      <bpmn2:conditionalEventDefinition>
+        <bpmn2:condition xsi:type="bpmn2:tFormalExpression">
+          enquiryStatus == com.example.bamoe.model.EnquiryStatus.RE_OPEN
+        </bpmn2:condition>
+      </bpmn2:conditionalEventDefinition>
+    </bpmn2:intermediateCatchEvent>
+
+    <!-- RESOLVED Conditional Event -->
+    <bpmn2:intermediateCatchEvent id="_resolvedEvent" name="Enquiry Resolved">
+      <bpmn2:incoming>_gatewayToResolved</bpmn2:incoming>
+      <bpmn2:outgoing>_resolvedToTask</bpmn2:outgoing>
+      <bpmn2:conditionalEventDefinition>
+        <bpmn2:condition xsi:type="bpmn2:tFormalExpression">
+          enquiryStatus == com.example.bamoe.model.EnquiryStatus.RESOLVED
+        </bpmn2:condition>
+      </bpmn2:conditionalEventDefinition>
+    </bpmn2:intermediateCatchEvent>
+
+    <!-- CLOSED Conditional Event -->
+    <bpmn2:intermediateCatchEvent id="_closedEvent" name="Enquiry Closed">
+      <bpmn2:incoming>_gatewayToClosed</bpmn2:incoming>
+      <bpmn2:outgoing>_closedToTask</bpmn2:outgoing>
+      <bpmn2:conditionalEventDefinition>
+        <bpmn2:condition xsi:type="bpmn2:tFormalExpression">
+          enquiryStatus == com.example.bamoe.model.EnquiryStatus.CLOSED
+        </bpmn2:condition>
+      </bpmn2:conditionalEventDefinition>
+    </bpmn2:intermediateCatchEvent>
+
+    <!-- IN_PROGRESS Conditional Event -->
+    <bpmn2:intermediateCatchEvent id="_inProgressEvent" name="Enquiry In Progress">
+      <bpmn2:incoming>_gatewayToInProgress</bpmn2:incoming>
+      <bpmn2:outgoing>_inProgressToTask</bpmn2:outgoing>
+      <bpmn2:conditionalEventDefinition>
+        <bpmn2:condition xsi:type="bpmn2:tFormalExpression">
+          enquiryStatus == com.example.bamoe.model.EnquiryStatus.IN_PROGRESS
+        </bpmn2:condition>
+      </bpmn2:conditionalEventDefinition>
+    </bpmn2:intermediateCatchEvent>
+
+    <!-- Tasks after Events -->
+    
+    <!-- Reopen Task -->
+    <bpmn2:scriptTask id="_reopenTask" name="Handle Reopen" scriptFormat="java">
+      <bpmn2:incoming>_reopenToTask</bpmn2:incoming>
+      <bpmn2:outgoing>_reopenToEnd</bpmn2:outgoing>
+      <bpmn2:script>
+        System.out.println("Enquiry has been reopened: " + enquiry);
+      </bpmn2:script>
+    </bpmn2:scriptTask>
+
+    <!-- Resolved Task -->
+    <bpmn2:scriptTask id="_resolvedTask" name="Handle Resolved" scriptFormat="java">
+      <bpmn2:incoming>_resolvedToTask</bpmn2:incoming>
+      <bpmn2:outgoing>_resolvedToEnd</bpmn2:outgoing>
+      <bpmn2:script>
+        System.out.println("Enquiry has been resolved: " + enquiry);
+      </bpmn2:script>
+    </bpmn2:scriptTask>
+
+    <!-- Closed Task -->
+    <bpmn2:scriptTask id="_closedTask" name="Handle Closed" scriptFormat="java">
+      <bpmn2:incoming>_closedToTask</bpmn2:incoming>
+      <bpmn2:outgoing>_closedToEnd</bpmn2:outgoing>
+      <bpmn2:script>
+        System.out.println("Enquiry has been closed: " + enquiry);
+      </bpmn2:script>
+    </bpmn2:scriptTask>
+
+    <!-- In Progress Task -->
+    <bpmn2:scriptTask id="_inProgressTask" name="Handle In Progress" scriptFormat="java">
+      <bpmn2:incoming>_inProgressToTask</bpmn2:incoming>
+      <bpmn2:outgoing>_inProgressToEnd</bpmn2:outgoing>
+      <bpmn2:script>
+        System.out.println("Enquiry is in progress: " + enquiry);
+      </bpmn2:script>
+    </bpmn2:scriptTask>
+
+    <!-- End Events -->
+    <bpmn2:endEvent id="_reopenEndEvent" name="Reopen End">
+      <bpmn2:incoming>_reopenToEnd</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:endEvent id="_resolvedEndEvent" name="Resolved End">
+      <bpmn2:incoming>_resolvedToEnd</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:endEvent id="_closedEndEvent" name="Closed End">
+      <bpmn2:incoming>_closedToEnd</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:endEvent id="_inProgressEndEvent" name="In Progress End">
+      <bpmn2:incoming>_inProgressToEnd</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn2:sequenceFlow id="_startToGateway" sourceRef="_startEvent" targetRef="_eventGateway"/>
+    
+    <bpmn2:sequenceFlow id="_gatewayToReopen" sourceRef="_eventGateway" targetRef="_reopenEvent"/>
+    <bpmn2:sequenceFlow id="_gatewayToResolved" sourceRef="_eventGateway" targetRef="_resolvedEvent"/>
+    <bpmn2:sequenceFlow id="_gatewayToClosed" sourceRef="_eventGateway" targetRef="_closedEvent"/>
+    <bpmn2:sequenceFlow id="_gatewayToInProgress" sourceRef="_eventGateway" targetRef="_inProgressEvent"/>
+    
+    <bpmn2:sequenceFlow id="_reopenToTask" sourceRef="_reopenEvent" targetRef="_reopenTask"/>
+    <bpmn2:sequenceFlow id="_resolvedToTask" sourceRef="_resolvedEvent" targetRef="_resolvedTask"/>
+    <bpmn2:sequenceFlow id="_closedToTask" sourceRef="_closedEvent" targetRef="_closedTask"/>
+    <bpmn2:sequenceFlow id="_inProgressToTask" sourceRef="_inProgressEvent" targetRef="_inProgressTask"/>
+    
+    <bpmn2:sequenceFlow id="_reopenToEnd" sourceRef="_reopenTask" targetRef="_reopenEndEvent"/>
+    <bpmn2:sequenceFlow id="_resolvedToEnd" sourceRef="_resolvedTask" targetRef="_resolvedEndEvent"/>
+    <bpmn2:sequenceFlow id="_closedToEnd" sourceRef="_closedTask" targetRef="_closedEndEvent"/>
+    <bpmn2:sequenceFlow id="_inProgressToEnd" sourceRef="_inProgressTask" targetRef="_inProgressEndEvent"/>
+
+  </bpmn2:process>
+
+  <!-- Diagram Information (optional - for visual layout) -->
+  <bpmndi:BPMNDiagram>
+    <bpmndi:BPMNPlane bpmnElement="SimpleConditionalProcess">
+      <!-- Start Event -->
+      <bpmndi:BPMNShape bpmnElement="_startEvent">
+        <dc:Bounds x="100" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Event Gateway -->
+      <bpmndi:BPMNShape bpmnElement="_eventGateway">
+        <dc:Bounds x="200" y="98" width="40" height="40"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Conditional Events -->
+      <bpmndi:BPMNShape bpmnElement="_reopenEvent">
+        <dc:Bounds x="320" y="50" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_resolvedEvent">
+        <dc:Bounds x="320" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_closedEvent">
+        <dc:Bounds x="320" y="150" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_inProgressEvent">
+        <dc:Bounds x="320" y="200" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Tasks -->
+      <bpmndi:BPMNShape bpmnElement="_reopenTask">
+        <dc:Bounds x="400" y="28" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_resolvedTask">
+        <dc:Bounds x="400" y="78" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_closedTask">
+        <dc:Bounds x="400" y="128" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_inProgressTask">
+        <dc:Bounds x="400" y="178" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- End Events -->
+      <bpmndi:BPMNShape bpmnElement="_reopenEndEvent">
+        <dc:Bounds x="550" y="50" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_resolvedEndEvent">
+        <dc:Bounds x="550" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_closedEndEvent">
+        <dc:Bounds x="550" y="150" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape bpmnElement="_inProgressEndEvent">
+        <dc:Bounds x="550" y="200" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge bpmnElement="_startToGateway">
+        <di:waypoint x="136" y="118"/>
+        <di:waypoint x="200" y="118"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_gatewayToReopen">
+        <di:waypoint x="240" y="118"/>
+        <di:waypoint x="320" y="68"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_gatewayToResolved">
+        <di:waypoint x="240" y="118"/>
+        <di:waypoint x="320" y="118"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_gatewayToClosed">
+        <di:waypoint x="240" y="118"/>
+        <di:waypoint x="320" y="168"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_gatewayToInProgress">
+        <di:waypoint x="240" y="118"/>
+        <di:waypoint x="320" y="218"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_reopenToTask">
+        <di:waypoint x="356" y="68"/>
+        <di:waypoint x="400" y="68"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_resolvedToTask">
+        <di:waypoint x="356" y="118"/>
+        <di:waypoint x="400" y="118"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_closedToTask">
+        <di:waypoint x="356" y="168"/>
+        <di:waypoint x="400" y="168"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_inProgressToTask">
+        <di:waypoint x="356" y="218"/>
+        <di:waypoint x="400" y="218"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_reopenToEnd">
+        <di:waypoint x="500" y="68"/>
+        <di:waypoint x="550" y="68"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_resolvedToEnd">
+        <di:waypoint x="500" y="118"/>
+        <di:waypoint x="550" y="118"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_closedToEnd">
+        <di:waypoint x="500" y="168"/>
+        <di:waypoint x="550" y="168"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge bpmnElement="_inProgressToEnd">
+        <di:waypoint x="500" y="218"/>
+        <di:waypoint x="550" y="218"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn2:definitions>
