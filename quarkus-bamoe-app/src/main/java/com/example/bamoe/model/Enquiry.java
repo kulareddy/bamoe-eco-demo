@@ -61,7 +61,7 @@ public class Enquiry implements Serializable {
     private LocalDateTime resolvedAt;
     
     @JsonProperty("comments")
-    private java.util.List<Comment> comments;
+    private java.util.List<Note> comments;
     
     // Constructors
     public Enquiry() {}
@@ -171,11 +171,11 @@ public class Enquiry implements Serializable {
         this.resolvedAt = resolvedAt;
     }
     
-    public java.util.List<Comment> getComments() {
+    public java.util.List<Note> getComments() {
         return comments;
     }
     
-    public void setComments(java.util.List<Comment> comments) {
+    public void setComments(java.util.List<Note> comments) {
         this.comments = comments;
     }
     

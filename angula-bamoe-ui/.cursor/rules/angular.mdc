@@ -1,0 +1,211 @@
+---
+description: Angular Enquiry Management System - Development Rules
+globs: ["**/*.ts", "**/*.html", "**/*.scss", "**/*.json"]
+alwaysApply: true
+---
+
+# Angular Enquiry Management System - Cursor Rules
+
+## Project Context
+This is an Angular 19 application for enquiry management with:
+- OAuth2/OIDC authentication via Keycloak
+- Spring Boot REST API integration
+- Quarkus BAMOE process management
+- Material Design UI components
+- Case management workflow
+
+## Code Style & Standards
+
+### Angular Best Practices
+- Use standalone components (Angular 19+)
+- Implement reactive programming with RxJS
+- Use TypeScript strict mode
+- Follow Angular style guide conventions
+- Use OnPush change detection where appropriate
+
+### Component Structure
+```typescript
+// Preferred component structure
+@Component({
+  selector: 'app-feature',
+  standalone: true,
+  imports: [CommonModule, /* specific Material modules */],
+  template: `<!-- template -->`,
+  styles: [`/* component styles */`]
+})
+export class FeatureComponent implements OnInit, OnDestroy {
+  // Properties
+  // Constructor with dependency injection
+  // Lifecycle hooks
+  // Public methods
+  // Private methods
+}
+```
+
+### Service Patterns
+- Use `providedIn: 'root'` for singleton services
+- Implement proper error handling with RxJS operators
+- Use environment configuration instead of hardcoded values
+- Follow the service pattern: `FeatureService` for business logic
+
+### Authentication & Security
+- Always use `AuthService` for authentication operations
+- Implement proper route guards with `authGuard`
+- Use HTTP interceptors for token management
+- Validate user roles and permissions
+
+### API Integration
+- Use environment variables for API endpoints
+- Implement proper error handling in HTTP calls
+- Use typed interfaces for API responses
+- Follow the pattern: `EnquiryService`, `ProcessService`
+
+### Material Design
+- Import only required Material modules
+- Use consistent color schemes from `APP_CONSTANTS`
+- Implement responsive design patterns
+- Use Material Design guidelines for spacing and typography
+
+### State Management
+- Use RxJS observables for state management
+- Implement proper subscription cleanup with `takeUntil`
+- Use BehaviorSubject for shared state
+- Follow reactive patterns throughout
+
+### Environment Configuration
+- Use `ConfigService` for configuration access
+- Never hardcode URLs or configuration values
+- Use environment-specific configurations
+- Implement feature flags for conditional functionality
+
+### Constants & Types
+- Use `APP_CONSTANTS` for application constants
+- Define proper TypeScript interfaces
+- Use enums for status and type definitions
+- Implement type safety throughout
+
+### Error Handling
+- Use `MatSnackBar` for user notifications
+- Implement proper error boundaries
+- Log errors appropriately
+- Provide meaningful error messages
+
+### Testing Considerations
+- Write unit tests for services and components
+- Use Angular Testing Utilities
+- Mock external dependencies
+- Test user interactions and API calls
+
+### File Organization
+```
+src/app/
+├── core/                    # Core functionality
+│   ├── constants/          # Application constants
+│   ├── guards/             # Route guards
+│   ├── interceptors/       # HTTP interceptors
+│   ├── models/             # Data models
+│   └── services/           # Core services
+├── features/               # Feature modules
+│   ├── auth/              # Authentication
+│   ├── enquiries/         # Enquiry management
+│   ├── tasks/             # Task management
+│   └── admin/             # Administration
+└── shared/                # Shared components
+    └── components/        # Reusable components
+```
+
+### Naming Conventions
+- Components: `PascalCase` (e.g., `EnquiryListComponent`)
+- Services: `PascalCase` with `Service` suffix
+- Interfaces: `PascalCase` (e.g., `Enquiry`, `UserInfo`)
+- Enums: `PascalCase` (e.g., `EnquiryStatus`, `Priority`)
+- Constants: `UPPER_SNAKE_CASE`
+- Files: `kebab-case.component.ts`
+
+### Import Organization
+```typescript
+// 1. Angular core imports
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+// 2. Angular Material imports
+import { MatCardModule } from '@angular/material/card';
+
+// 3. Third-party imports
+import { Observable } from 'rxjs';
+
+// 4. Application imports
+import { AuthService } from '../core/services/auth.service';
+import { Enquiry } from '../core/models/enquiry.model';
+```
+
+### Performance Considerations
+- Use OnPush change detection strategy
+- Implement lazy loading for routes
+- Optimize bundle size with tree shaking
+- Use trackBy functions in *ngFor loops
+- Implement virtual scrolling for large lists
+
+### Accessibility
+- Use semantic HTML elements
+- Implement proper ARIA labels
+- Ensure keyboard navigation support
+- Use Material Design accessibility features
+
+### Documentation
+- Add JSDoc comments for public methods
+- Document complex business logic
+- Maintain README files for setup instructions
+- Use meaningful commit messages
+
+## Common Patterns
+
+### Subscription Management
+```typescript
+private destroy$ = new Subject<void>();
+
+ngOnInit() {
+  this.service.getData()
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(data => {
+      // Handle data
+    });
+}
+
+ngOnDestroy() {
+  this.destroy$.next();
+  this.destroy$.complete();
+}
+```
+
+### Error Handling
+```typescript
+this.service.getData().subscribe({
+  next: (data) => {
+    // Handle success
+  },
+  error: (error) => {
+    console.error('Error:', error);
+    this.snackBar.open('Error loading data', 'Close', { duration: 3000 });
+  }
+});
+```
+
+### Environment Usage
+```typescript
+// Use ConfigService instead of direct environment access
+const apiUrl = this.configService.getApiUrl('enquiryService');
+const isDebugMode = this.configService.isFeatureEnabled('debugMode');
+```
+
+## Anti-Patterns to Avoid
+- Don't hardcode URLs or configuration values
+- Don't forget to unsubscribe from observables
+- Don't use `any` type unless absolutely necessary
+- Don't mix business logic in components
+- Don't ignore TypeScript errors
+- Don't use deprecated Angular features
+- Don't forget to handle loading and error states
+- Don't use inline styles for complex styling
+- Don't ignore accessibility requirements
+- Don't commit sensitive configuration data

@@ -9,8 +9,7 @@ public enum EnquiryStatus {
     IN_PROGRESS("IN_PROGRESS", "Enquiry is in progress"),
     RESOLVED("RESOLVED", "Enquiry has been resolved"),
     CLOSED("CLOSED", "Enquiry has been closed"),
-    CANCELLED("CANCELLED", "Enquiry has been cancelled"),
-    RE_OPEN("RE_OPEN", "Enquiry has been reopened");
+    CANCELLED("CANCELLED", "Enquiry has been cancelled");
     
     private final String code;
     private final String description;

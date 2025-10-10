@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * Comment model for enquiry comments
  */
-public class Comment implements Serializable {
+public class Note implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
@@ -30,12 +30,9 @@ public class Comment implements Serializable {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private LocalDateTime commentedAt;
     
-    @JsonProperty("enquiry")
-    private Enquiry enquiry;
+    public Note() {}
     
-    public Comment() {}
-    
-    public Comment(String comment, User commentedBy) {
+    public Note(String comment, User commentedBy) {
         this.comment = comment;
         this.commentedBy = commentedBy;
         this.commentedAt = LocalDateTime.now();
@@ -72,15 +69,7 @@ public class Comment implements Serializable {
     public void setCommentedAt(LocalDateTime commentedAt) {
         this.commentedAt = commentedAt;
     }
-    
-    public Enquiry getEnquiry() {
-        return enquiry;
-    }
-    
-    public void setEnquiry(Enquiry enquiry) {
-        this.enquiry = enquiry;
-    }
-    
+        
     @Override
     public String toString() {
         return "Comment{" +
@@ -88,7 +77,6 @@ public class Comment implements Serializable {
                 ", comment='" + comment + "'" +
                 ", commentedBy=" + commentedBy +
                 ", commentedAt=" + commentedAt +
-                ", enquiryId='" + (enquiry != null ? enquiry.getId() : null) + "'" +
                 '}';
     }
 }

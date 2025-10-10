@@ -1,7 +1,7 @@
 package com.example.bamoe.service;
 
 import com.example.bamoe.client.enquiry.EnquiryGateway;
-import com.example.bamoe.model.Comment;
+import com.example.bamoe.model.Note;
 import com.example.bamoe.model.Enquiry;
 import com.example.bamoe.model.EnquiryStatus;
 import com.example.bamoe.model.User;
@@ -27,6 +27,7 @@ public class EnquiryService {
     @Inject
     EnquiryGateway enquiryGateway;
 
+
     /**
      * Create a new enquiry
      */
@@ -45,11 +46,16 @@ public class EnquiryService {
             if (enquiry.getUpdatedAt() == null) {
                 enquiry.setUpdatedAt(LocalDateTime.now());
             }
+            if (enquiry.getResolvedAt() == null) {
+                enquiry.setResolvedAt(LocalDateTime.now());
+            }
             String processInstanceId = kcontext.getProcessInstance().getId();
             LOG.info("ProcessInstanceId: {}", processInstanceId);
             enquiry.setProcessInstanceId(processInstanceId);
             Enquiry createdEnquiry = enquiryGateway.createEnquiry(enquiry);
             LOG.info("Enquiry created successfully with ID: {}", createdEnquiry.getId());
+            
+            
             return createdEnquiry;
             
         } catch (WebApplicationException e) {
@@ -143,20 +149,55 @@ public class EnquiryService {
         }
     }
 
-    /**
-     * Close enquiry with resolution
-     */
-    public Enquiry closeEnquiry(Enquiry enquiry, String resolutionNotes, KogitoProcessContext kcontext) {
-        LOG.info("Closing enquiry: {} with resolution: {}", enquiry.getTitle(), resolutionNotes);
+    public Enquiry resolveEnquiry(Enquiry enquiry, String resolveNotes, KogitoProcessContext kcontext) {
+        LOG.info("Resolving enquiry: {} with resolution: {}", enquiry.getTitle(), resolveNotes);
         
         try {
             enquiry.setStatus(EnquiryStatus.RESOLVED);
-            enquiry.setResolutionNotes(resolutionNotes);
-            enquiry.setResolvedAt(LocalDateTime.now());
+            enquiry.setResolutionNotes(resolveNotes);
+            enquiry.setUpdatedAt(LocalDateTime.now());
+            
+            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
+            LOG.info("Enquiry resolved successfully");
+            
+            
+            return updatedEnquiry;
+            
+        } catch (WebApplicationException e) {
+            LOG.error("EnquiryService: WebApplicationException from enquiry service during closure");
+            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
+            kcontext.setVariable("errorResponse", errorResponse);
+            throw e;
+        } catch (Exception e) {
+            LOG.error("EnquiryService: Unexpected error during closure", e);
+            ErrorResponse errorResponse = new ErrorResponse(
+                "ERR500",
+                "Enquiry Closure Error",
+                e.getMessage(),
+                "enquiry-service",
+                "/enquiries/" + enquiry.getId(),
+                "PUT"
+            );
+            kcontext.setVariable("errorResponse", errorResponse);
+            throw new jakarta.ws.rs.WebApplicationException("EnquiryService closure error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Close enquiry with resolution
+     */
+    public Enquiry closeEnquiry(Enquiry enquiry, String closeNotes, KogitoProcessContext kcontext) {
+        LOG.info("Closing enquiry: {} with close notes: {}", enquiry.getTitle(), closeNotes);
+        
+        try {
+            enquiry.setStatus(EnquiryStatus.CLOSED);
+            enquiry.setResolutionNotes(closeNotes);
             enquiry.setUpdatedAt(LocalDateTime.now());
             
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
             LOG.info("Enquiry closed successfully");
+            
+            
             return updatedEnquiry;
             
         } catch (WebApplicationException e) {
@@ -182,16 +223,18 @@ public class EnquiryService {
     /**
      * Cancel enquiry
      */
-    public Enquiry cancelEnquiry(Enquiry enquiry, String cancellationReason, KogitoProcessContext kcontext) {
-        LOG.info("Cancelling enquiry: {} - Reason: {}", enquiry.getTitle(), cancellationReason);
+    public Enquiry cancelEnquiry(Enquiry enquiry, String cancelNotes, KogitoProcessContext kcontext) {
+        LOG.info("Cancelling enquiry: {} - Reason: {}", enquiry.getTitle(), cancelNotes);
         
         try {
             enquiry.setStatus(EnquiryStatus.CANCELLED);
-            enquiry.setResolutionNotes("Cancelled: " + cancellationReason);
+            enquiry.setResolutionNotes("Cancelled: " + cancelNotes);
             enquiry.setUpdatedAt(LocalDateTime.now());
             
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
             LOG.info("Enquiry cancelled successfully");
+            
+            
             return updatedEnquiry;
             
         } catch (WebApplicationException e) {
@@ -217,17 +260,18 @@ public class EnquiryService {
     /**
      * Reopen enquiry for further investigation
      */
-    public Enquiry reopenEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
-        LOG.info("Reopening enquiry: {} - Reason: {}", enquiry.getTitle(), "reopenReason");
+    public Enquiry reopenEnquiry(Enquiry enquiry, String reopenNotes, KogitoProcessContext kcontext) {
+        LOG.info("Reopening enquiry: {} - Reason: {}", enquiry.getTitle(), reopenNotes);
         
         try {
             enquiry.setStatus(EnquiryStatus.OPEN);
-            enquiry.setResolutionNotes(null);
-            enquiry.setResolvedAt(null);
+            enquiry.setResolutionNotes(reopenNotes);
             enquiry.setUpdatedAt(LocalDateTime.now());
             
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
             LOG.info("Enquiry reopened successfully");
+            
+            
             return updatedEnquiry;
             
         } catch (WebApplicationException e) {
@@ -253,10 +297,11 @@ public class EnquiryService {
     /**
      * Add comment to enquiry
      */
-    public Enquiry addComment(Enquiry enquiry, Comment comment, KogitoProcessContext kcontext) {
-        LOG.info("Adding comment to enquiry: {} by: {}", enquiry.getId(), comment.getCommentedBy().getName());
-        
+    public Enquiry addComment(Note comment, KogitoProcessContext kcontext) {
+        LOG.info("Adding comment to enquiry instance: {} by: {}", kcontext.getProcessInstance().getId(), comment.getCommentedBy().getName());
+        Enquiry enquiry = null;
         try {
+            enquiry = (Enquiry) kcontext.getVariable("enquiry");
             // Add comment to the enquiry
             if (enquiry.getComments() == null) {
                 enquiry.setComments(new java.util.ArrayList<>());
@@ -334,6 +379,8 @@ public class EnquiryService {
             
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
             LOG.info("Enquiry status updated successfully");
+            
+            
             return updatedEnquiry;
             
         } catch (WebApplicationException e) {

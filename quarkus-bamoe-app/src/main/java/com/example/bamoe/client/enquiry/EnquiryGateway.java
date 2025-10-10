@@ -56,15 +56,15 @@ public class EnquiryGateway {
         return response.getStatus() == Response.Status.OK.getStatusCode();
     }
     
-    public List<Comment> getComments(String id) {
+    public List<Note> getComments(String id) {
         return enquiryClient.getComments(id);
     }
     
-    public Comment addComment(String id, Comment comment) {
+    public Note addComment(String id, Note comment) {
         return enquiryClient.addComment(id, comment);
     }
     
-    public Comment updateComment(String id, String commentId, Comment comment) {
+    public Note updateComment(String id, String commentId, Note comment) {
         return enquiryClient.updateComment(id, commentId, comment);
     }
     

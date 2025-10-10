@@ -1,0 +1,200 @@
+---
+description: BAMOE 9.3 Quarkus Project - Development Rules
+globs: ["**/*.java", "**/*.properties", "**/*.bpmn", "**/*.dmn", "**/*.xml", "**/*.yml", "**/*.yaml"]
+alwaysApply: true
+---
+
+# BAMOE 9.3 Quarkus Project Cursor Rules
+
+## Project Overview
+This is a BAMOE (Business Automation Management Open Edition) 9.3.0-ibm-0007 project built with Quarkus framework. It provides a complete ecosystem for business process automation, decision management, and case management.
+
+## Architecture & Technology Stack
+
+### Core Technologies
+- **BAMOE 9.3.0-ibm-0007**: IBM's open-source business automation platform
+- **Quarkus 3.20.1**: Supersonic Subatomic Java framework
+- **PostgreSQL 17**: Primary database
+- **Keycloak 24.0**: Identity and access management
+- **Docker Compose**: Container orchestration
+
+### Key Dependencies
+- `org.jbpm:jbpm-with-drools-quarkus` - Core BAMOE engine
+- `org.kie:kie-addons-quarkus-persistence-jdbc` - Database persistence
+- `org.kie:kie-addons-quarkus-process-management` - Process management
+- `io.quarkus:quarkus-oidc` - OIDC security integration
+
+## Project Structure
+
+```
+src/main/java/com/example/bamoe/
+├── model/           # Data models and DTOs
+├── service/         # Business logic services
+├── client/          # External service clients
+├── filter/          # Request/response filters
+├── util/            # Utility classes
+└── oidc/            # OIDC configuration
+
+src/main/resources/
+├── application.properties    # Configuration
+├── *.bpmn                  # BPMN process definitions
+├── *.dmn                   # DMN decision models
+└── META-INF/forms/         # Process forms
+```
+
+## Configuration Patterns
+
+### Essential Properties
+```properties
+# BAMOE Persistence
+kogito.persistence.type=jdbc
+kogito.persistence.proto.marshaller=false  # Use Java serialization instead of protobuf
+kogito.persistence.optimistic.lock=true
+
+# OIDC Security
+quarkus.oidc.enabled=true
+quarkus.oidc.auth-server-url=http://localhost:9180/realms/quarkus-realm
+quarkus.oidc.client-id=quarkus-bamoe-frontend
+kogito.security.auth.enabled=true
+
+# Jackson Date Serialization (Workaround for BAMOE Management Console JS bug)
+# Note: This may no longer be needed in BAMOE 9.2.0+ but kept for compatibility
+quarkus.jackson.write-dates-as-timestamps=false
+quarkus.jackson.write-durations-as-timestamps=false
+```
+
+### Environment Variables
+- `OIDC_AUTH_SERVER_URL`: Keycloak realm URL
+- `OIDC_CLIENT_ID`: OIDC client identifier
+- `OIDC_CLIENT_SECRET`: OIDC client secret
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Database credentials
+
+## Development Guidelines
+
+### Model Classes
+- Use `LocalDateTime` for timestamps (no `@JsonFormat` annotations)
+- Implement `Serializable` with proper `serialVersionUID`
+- Use `@JsonProperty` for JSON field mapping
+- Include `@JsonInclude(JsonInclude.Include.NON_NULL)` for optional fields
+
+### REST Clients
+- Use `@RegisterRestClient` with `configKey`
+- Apply `@RegisterProvider(OidcClientRequestFilter.class)` for token propagation
+- Handle errors with custom filters implementing `ClientResponseFilter`
+
+### Process Development
+- Place BPMN files in `src/main/resources/`
+- Use descriptive process and task names
+- Define process variables with proper types
+- Include user tasks with forms in `META-INF/forms/`
+
+### Service Layer
+- Keep business logic in service classes
+- Use `@ApplicationScoped` for dependency injection
+- Implement proper error handling and logging
+- Follow single responsibility principle
+
+## API Patterns
+
+### Process Management
+- Process instances: `/ProcessName` (POST to start, GET to list)
+- Process management: `/ProcessName/{id}` (GET, DELETE)
+- Task management: `/ProcessName/{id}/tasks` (GET, POST to complete)
+
+### Authentication
+- All endpoints require Bearer token authentication
+- Use `quarkus-realm` realm in Keycloak
+- Client: `quarkus-bamoe-frontend`
+
+### Error Handling
+- Use consistent error response format
+- Include proper HTTP status codes
+- Log errors with appropriate levels
+- Return user-friendly error messages
+
+## Docker & Deployment
+
+### Container Strategy
+- Use `quay.io/bamoe/*` images for BAMOE components
+- Multi-stage builds for application containers
+- Health checks for all services
+- Proper volume mounts for persistence
+
+### Service Dependencies
+- PostgreSQL → Keycloak → Application
+- Management Console depends on Application
+- Kafka (optional) for event streaming
+
+## Testing Patterns
+
+### Unit Tests
+- Test business logic in service classes
+- Mock external dependencies
+- Use `@QuarkusTest` for integration tests
+- Test authentication and authorization
+
+### API Tests
+- Use `@QuarkusIntegrationTest` for full stack tests
+- Test with valid and invalid tokens
+- Verify process lifecycle operations
+- Test error scenarios
+
+## Common Patterns
+
+### Date Handling
+```java
+@JsonProperty("createdAt")
+@JsonInclude(JsonInclude.Include.NON_NULL)
+private LocalDateTime createdAt; // No @JsonFormat needed
+```
+
+### REST Client with OIDC
+```java
+@RegisterRestClient(configKey = "external-service")
+@RegisterProvider(OidcClientRequestFilter.class)
+public interface ExternalService {
+    @GET
+    List<Data> getData();
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **Authentication**: Verify Keycloak realm and client configuration
+2. **Database**: Check connection string and credentials
+3. **Process Deployment**: Verify BPMN syntax and process definitions
+
+### Debug Configuration
+```properties
+quarkus.log.category."com.example.bamoe".level=DEBUG
+quarkus.log.category."org.kie.kogito".level=DEBUG
+```
+
+## Best Practices
+
+1. **Security**: Always use OIDC authentication in production
+2. **Performance**: Use connection pooling and proper JVM settings
+3. **Monitoring**: Implement health checks and metrics
+4. **Documentation**: Keep API documentation up to date
+5. **Testing**: Maintain high test coverage for business logic
+6. **Error Handling**: Implement comprehensive error handling
+7. **Logging**: Use structured logging with appropriate levels
+8. **Configuration**: Externalize all configuration properties
+
+## External Resources
+
+- **BAMOE Documentation**: https://www.ibm.com/docs/en/ibamoe/9.3.0
+- **Quarkus Documentation**: https://quarkus.io/guides/
+- **Keycloak Documentation**: https://www.keycloak.org/documentation
+- **BPMN 2.0 Specification**: https://www.omg.org/spec/BPMN/2.0/
+
+## Development Workflow
+
+1. **Setup**: Run `docker-compose up -d` to start ecosystem
+2. **Configure**: Set up Keycloak realm and RBAC
+3. **Develop**: Use `./mvnw quarkus:dev` for development
+4. **Test**: Run tests with `./mvnw test`
+5. **Deploy**: Build and deploy with Docker or Kubernetes
+
+Remember: This is a BAMOE ecosystem template designed for business process automation, decision management, and case management. Focus on creating reusable, modular components that can be extended for different business domains.

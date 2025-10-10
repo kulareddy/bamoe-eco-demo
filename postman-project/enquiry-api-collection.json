@@ -1207,6 +1207,371 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get Quarkus Process Instances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess"
+              ]
+            },
+            "description": "Get all enquiry process instances from Quarkus",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Quarkus Process Instance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Cross-Service Enquiry\",\n    \"description\": \"This enquiry is created from Spring Boot service\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess?businessKey=cross-service-{{enquiry_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess"
+              ],
+              "query": [
+                {
+                  "key": "businessKey",
+                  "value": "cross-service-{{enquiry_id}}"
+                }
+              ]
+            },
+            "description": "Create a new enquiry process instance in Quarkus from Spring Boot",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spring_boot_access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health and Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/health",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Spring Boot application health"
+          },
+          "response": []
+        },
+        {
+          "name": "Application Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/info",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "info"
+              ]
+            },
+            "description": "Get Spring Boot application information"
+          },
+          "response": []
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/metrics",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics"
+              ]
+            },
+            "description": "Get Spring Boot application metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "Environment Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/env",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "env"
+              ]
+            },
+            "description": "Get Spring Boot environment configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Configuration Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/configprops",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "configprops"
+              ]
+            },
+            "description": "Get Spring Boot configuration properties"
+          },
+          "response": []
+        },
+        {
+          "name": "Beans Information",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/beans",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "beans"
+              ]
+            },
+            "description": "Get Spring Boot application beans"
+          },
+          "response": []
+        },
+        {
+          "name": "Mappings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/mappings",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "mappings"
+              ]
+            },
+            "description": "Get Spring Boot request mappings"
+          },
+          "response": []
+        },
+        {
+          "name": "Loggers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/loggers",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "loggers"
+              ]
+            },
+            "description": "Get Spring Boot loggers configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Thread Dump",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/threaddump",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "threaddump"
+              ]
+            },
+            "description": "Get Spring Boot thread dump"
+          },
+          "response": []
+        },
+        {
+          "name": "Memory Usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/metrics/jvm.memory.used",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics",
+                "jvm.memory.used"
+              ]
+            },
+            "description": "Get JVM memory usage metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "HTTP Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{spring_boot_base_url}}/actuator/metrics/http.server.requests",
+              "host": [
+                "{{spring_boot_base_url}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics",
+                "http.server.requests"
+              ]
+            },
+            "description": "Get HTTP server requests metrics"
+          },
+          "response": []
         }
       ]
     }

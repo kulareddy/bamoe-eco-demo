@@ -60,15 +60,15 @@ public interface EnquiryClient {
     
     @GET
     @Path("/{id}/comments")
-    List<Comment> getComments(@PathParam("id") String id);
+    List<Note> getComments(@PathParam("id") String id);
     
     @POST
     @Path("/{id}/comments")
-    Comment addComment(@PathParam("id") String id, Comment comment);
+    Note addComment(@PathParam("id") String id, Note comment);
     
     @PUT
     @Path("/{id}/comments/{commentId}")
-    Comment updateComment(@PathParam("id") String id, @PathParam("commentId") String commentId, Comment comment);
+    Note updateComment(@PathParam("id") String id, @PathParam("commentId") String commentId, Note comment);
     
     @DELETE
     @Path("/{id}/comments/{commentId}")

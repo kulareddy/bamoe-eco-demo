@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Enquiry Process Collection",
-    "description": "Clean collection for Quarkus BAMOE Enquiry Process API",
+    "description": "Updated collection for Quarkus BAMOE Enquiry Process API with latest OpenAPI spec",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -48,6 +48,71 @@
     {
       "key": "refresh_token",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "job_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "process_instance_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_resource_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "process_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "node_instance_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "node_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "comment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "phase",
+      "value": "complete",
       "type": "string"
     }
   ],
@@ -821,19 +886,9 @@
       "name": "Enquiry Process Management",
       "item": [
         {
-          "name": "Create Enquiry Process",
+          "name": "List Enquiry Processes",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"enquiry\": {\n    \"title\": \"User Enquiry Process\",\n    \"description\": \"This enquiry process is created by a user\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
-            },
+            "method": "GET",
             "url": {
               "raw": "{{quarkus_base_url}}/EnquiryProcess",
               "host": [
@@ -849,11 +904,72 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (pm.response.code === 201) {",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd All Enquiry Processes:', JSON.stringify(response, null, 2));",
+                  "    if (response.length > 0) {",
+                  "        // Set the first process instance ID for testing",
+                  "        const firstProcess = response[0];",
+                  "        if (firstProcess.id) {",
+                  "            pm.collectionVariables.set('process_instance_id', firstProcess.id);",
+                  "            pm.collectionVariables.set('enquiry_process_id', firstProcess.id);",
+                  "            console.log('\u2705 Set process_instance_id to first process:', firstProcess.id);",
+                  "            console.log('\ud83d\udcdd This ID can be used for signal endpoints like /EnquiryProcess/' + firstProcess.id + '/cancel');",
+                  "        }",
+                  "        // Log all available process IDs for manual selection",
+                  "        console.log('\ud83d\udcdd Available Process Instance IDs:');",
+                  "        response.forEach((process, index) => {",
+                  "            console.log(`  ${index + 1}. ID: ${process.id}, Status: ${process.status || 'unknown'}`);",
+                  "        });",
+                  "    } else {",
+                  "        console.log('\u274c No enquiry processes found');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Enquiry Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"User Enquiry Process\",\n    \"description\": \"This enquiry process is created by a user\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess?businessKey={{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess"
+              ],
+              "query": [
+                {
+                  "key": "businessKey",
+                  "value": "{{enquiry_process_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    const response = pm.response.json();",
                   "    pm.collectionVariables.set('enquiry_process_id', response.id);",
-                  "    console.log('\u2705 Enquiry process created with ID:', response.id);",
-                  "    console.log('\ud83d\udcdd Process instance ID:', response.enquiry.processInstanceId);",
+                  "    pm.collectionVariables.set('process_instance_id', response.id);",
+                  "    console.log('✅ Enquiry process created with ID:', response.id);",
                   "}"
                 ]
               }
@@ -874,7 +990,27 @@
                 "{{enquiry_process_id}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Get Enquiry Process response:', JSON.stringify(response, null, 2));",
+                  "    ",
+                  "    // Set process instance ID - based on OpenAPI spec, the response.id IS the process instance ID",
+                  "    const processInstanceId = response.id;",
+                  "    pm.collectionVariables.set('process_instance_id', processInstanceId);",
+                  "    pm.collectionVariables.set('enquiry_process_id', processInstanceId);",
+                  "    console.log('\ud83d\udcdd Process instance ID extracted from Get Enquiry Process:', processInstanceId);",
+                  "    console.log('\ud83d\udcdd This ID can be used for signal endpoints like /EnquiryProcess/' + processInstanceId + '/cancel');",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Enquiry Process",
@@ -889,6 +1025,32 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry Process\",\n    \"description\": \"This enquiry process has been updated\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Patch Enquiry Process",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Patched Enquiry Process\",\n    \"description\": \"This enquiry process has been patched\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
@@ -921,188 +1083,7 @@
       ]
     },
     {
-      "name": "Event Subprocess",
-      "item": [
-        {
-          "name": "Trigger Event Subprocess",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"eventType\": \"processEvent\",\n  \"eventData\": {\n    \"action\": \"statusChange\",\n    \"newStatus\": \"IN_PROGRESS\",\n    \"reason\": \"Process status updated via event subprocess\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
-              "host": [
-                "{{quarkus_base_url}}"
-              ],
-              "path": [
-                "EnquiryProcess",
-                "{{enquiry_process_id}}",
-                "Event_Sub-process"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "console.log('\ud83c\udfaf Event Subprocess Test');",
-                  "console.log('Response Status:', pm.response.code);",
-                  "console.log('Response Body:', pm.response.text());",
-                  "if (pm.response.code === 200) {",
-                  "    console.log('\u2705 Event subprocess triggered successfully');",
-                  "} else {",
-                  "    console.log('\u274c Event subprocess failed:', pm.response.text());",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Trigger Reopen Event",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"eventType\": \"reopenEvent\",\n  \"eventData\": {\n    \"action\": \"reopen\",\n    \"reason\": \"Enquiry reopened by user\",\n    \"reopenedBy\": \"{{current_username}}\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
-              "host": [
-                "{{quarkus_base_url}}"
-              ],
-              "path": [
-                "EnquiryProcess",
-                "{{enquiry_process_id}}",
-                "Event_Sub-process"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "console.log('\ud83d\udd04 Reopen Event Test');",
-                  "console.log('Response Status:', pm.response.code);",
-                  "console.log('Response Body:', pm.response.text());",
-                  "if (pm.response.code === 200) {",
-                  "    console.log('\u2705 Reopen event triggered successfully');",
-                  "} else {",
-                  "    console.log('\u274c Reopen event failed:', pm.response.text());",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Trigger Close Event",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"eventType\": \"closeEvent\",\n  \"eventData\": {\n    \"action\": \"close\",\n    \"reason\": \"Enquiry closed by user\",\n    \"closedBy\": \"{{current_username}}\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
-              "host": [
-                "{{quarkus_base_url}}"
-              ],
-              "path": [
-                "EnquiryProcess",
-                "{{enquiry_process_id}}",
-                "Event_Sub-process"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "console.log('\ud83d\udd12 Close Event Test');",
-                  "console.log('Response Status:', pm.response.code);",
-                  "console.log('Response Body:', pm.response.text());",
-                  "if (pm.response.code === 200) {",
-                  "    console.log('\u2705 Close event triggered successfully');",
-                  "} else {",
-                  "    console.log('\u274c Close event failed:', pm.response.text());",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Trigger Resolve Event",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"eventType\": \"resolveEvent\",\n  \"eventData\": {\n    \"action\": \"resolve\",\n    \"reason\": \"Enquiry resolved by user\",\n    \"resolvedBy\": \"{{current_username}}\",\n    \"resolution\": \"Issue has been successfully resolved\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Event_Sub-process",
-              "host": [
-                "{{quarkus_base_url}}"
-              ],
-              "path": [
-                "EnquiryProcess",
-                "{{enquiry_process_id}}",
-                "Event_Sub-process"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "console.log('\u2705 Resolve Event Test');",
-                  "console.log('Response Status:', pm.response.code);",
-                  "console.log('Response Body:', pm.response.text());",
-                  "if (pm.response.code === 200) {",
-                  "    console.log('\u2705 Resolve event triggered successfully');",
-                  "} else {",
-                  "    console.log('\u274c Resolve event failed:', pm.response.text());",
-                  "}"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Comment Management",
+      "name": "Process Signals",
       "item": [
         {
           "name": "Add Comment Signal",
@@ -1116,32 +1097,200 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"comment\": \"This is a test comment from user\",\n  \"commentedBy\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}"
+              "raw": "{\n  \"comment\": \"Comment added by {{current_username}}\",\n  \"commentedBy\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/comment",
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/comment",
               "host": [
                 "{{quarkus_base_url}}"
               ],
               "path": [
                 "EnquiryProcess",
-                "{{enquiry_process_id}}",
+                "{{process_instance_id}}",
                 "comment"
               ]
             }
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "let processInstanceId = pm.collectionVariables.get('process_instance_id');",
+                  "if (!processInstanceId) {",
+                  "    processInstanceId = pm.collectionVariables.get('enquiry_process_id');",
+                  "    if (processInstanceId) {",
+                  "        pm.collectionVariables.set('process_instance_id', processInstanceId);",
+                  "    } else {",
+                  "        throw new Error('process_instance_id variable is not set. Please run Create Enquiry Process first.');",
+                  "    }",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
-                  "console.log('\ud83d\udcac Comment Signal Test');",
-                  "console.log('Response Status:', pm.response.code);",
-                  "console.log('Response Body:', pm.response.text());",
                   "if (pm.response.code === 200) {",
                   "    console.log('\u2705 Comment signal sent successfully');",
                   "} else {",
-                  "    console.log('\u274c Comment signal failed:', pm.response.text());",
+                  "    console.log('\u274c Comment signal failed:', pm.response.code, pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reopen Signal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/reopen",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "reopen"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pre-request validation",
+                  "const processInstanceId = pm.collectionVariables.get('process_instance_id');",
+                  "if (!processInstanceId) {",
+                  "    console.log('\u274c ERROR: process_instance_id is not set!');",
+                  "    console.log('Please run one of these requests first:');",
+                  "    console.log('1. List Enquiry Processes');",
+                  "    console.log('2. Create Enquiry Process');",
+                  "    console.log('3. Get Enquiry Process');",
+                  "    throw new Error('process_instance_id variable is not set');",
+                  "}",
+                  "console.log('\ud83d\udcdd Using process_instance_id:', processInstanceId);",
+                  "console.log('\ud83d\udcdd Full URL will be:', pm.collectionVariables.get('quarkus_base_url') + '/EnquiryProcess/' + processInstanceId + '/reopen');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udd04 Reopen Signal Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Reopen signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Reopen signal failed:', pm.response.text());",
+                  "    console.log('Make sure process_instance_id is set correctly');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close Signal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/close",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pre-request validation",
+                  "const processInstanceId = pm.collectionVariables.get('process_instance_id');",
+                  "if (!processInstanceId) {",
+                  "    console.log('\u274c ERROR: process_instance_id is not set!');",
+                  "    console.log('Please run one of these requests first:');",
+                  "    console.log('1. List Enquiry Processes');",
+                  "    console.log('2. Create Enquiry Process');",
+                  "    console.log('3. Get Enquiry Process');",
+                  "    throw new Error('process_instance_id variable is not set');",
+                  "}",
+                  "console.log('\ud83d\udcdd Using process_instance_id:', processInstanceId);",
+                  "console.log('\ud83d\udcdd Full URL will be:', pm.collectionVariables.get('quarkus_base_url') + '/EnquiryProcess/' + processInstanceId + '/close');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udd12 Close Signal Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Close signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Close signal failed:', pm.response.text());",
+                  "    console.log('Make sure process_instance_id is set correctly');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Signal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/cancel",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const processInstanceId = pm.collectionVariables.get('process_instance_id');",
+                  "if (!processInstanceId) {",
+                  "    throw new Error('process_instance_id variable is not set. Run List/Create/Get Enquiry Process first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Cancel signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Cancel signal failed:', pm.response.code, pm.response.text());",
                   "}"
                 ]
               }
@@ -1158,14 +1307,3144 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/tasks",
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/tasks",
               "host": [
                 "{{quarkus_base_url}}"
               ],
               "path": [
                 "EnquiryProcess",
-                "{{enquiry_process_id}}",
+                "{{process_instance_id}}",
                 "tasks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\u2705 Retrieved', response.length, 'tasks');",
+                  "    if (response.length > 0) {",
+                  "        pm.collectionVariables.set('current_task_id', response[0].id);",
+                  "        console.log('\ud83d\udcdd Set current_task_id to:', response[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service Task Management",
+      "item": [
+        {
+          "name": "Service Add Comment Task",
+          "item": [
+            {
+              "name": "Get Service Add Comment Task",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Add_Comment",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Save Service Add Comment Task",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry with Comment\",\n    \"description\": \"This enquiry has been updated with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Add_Comment",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Add Comment Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry with Comment Added\",\n    \"description\": \"This enquiry has been completed with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Add_Comment",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Abort Service Add Comment Task",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Add_Comment",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "abort"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Service Add Comment Task Schema",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}/schema",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Add_Comment",
+                    "{{current_task_id}}",
+                    "schema"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Enquiry Close Task",
+          "item": [
+            {
+              "name": "Get Service Enquiry Close Task",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Close/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_Close",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Enquiry Close Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Closed\",\n    \"description\": \"This enquiry has been closed\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CLOSED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Close/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_Close",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Enquiry Reopen Task",
+          "item": [
+            {
+              "name": "Get Service Enquiry Reopen Task",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Reopen/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_Reopen",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Enquiry Reopen Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Reopened\",\n    \"description\": \"This enquiry has been reopened\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RE_OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Reopen/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_Reopen",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Enquiry Cancel Task",
+          "item": [
+            {
+              "name": "Get Service Enquiry Cancel Task",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_cancel/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_cancel",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Enquiry Cancel Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Cancelled\",\n    \"description\": \"This enquiry has been cancelled\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CANCELLED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_cancel/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Enquiry_cancel",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Task Create Enquiry",
+          "item": [
+            {
+              "name": "Get Service Task Create Enquiry",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Create_Enquiry/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Task_Create_Enquiry",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Task Create Enquiry",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"New Enquiry Created\",\n    \"description\": \"This enquiry has been created through the service task\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Create_Enquiry/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Task_Create_Enquiry",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Task Resolved",
+          "item": [
+            {
+              "name": "Get Service Task Resolved",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Resolved/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Task_Resolved",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Service Task Resolved",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Resolved\",\n    \"description\": \"This enquiry has been resolved\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RESOLVED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Resolved/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "Service_Task_Resolved",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Task Support",
+          "item": [
+            {
+              "name": "Get Task Support",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/TaskSupport/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "TaskSupport",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Complete Task Support",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enquiryStatus\": \"IN_PROGRESS\"\n}"
+                },
+                "url": {
+                  "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/TaskSupport/{{current_task_id}}",
+                  "host": [
+                    "{{quarkus_base_url}}"
+                  ],
+                  "path": [
+                    "EnquiryProcess",
+                    "{{enquiry_process_id}}",
+                    "TaskSupport",
+                    "{{current_task_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "{{current_username}}"
+                    },
+                    {
+                      "key": "phase",
+                      "value": "complete"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DMN Decision Management",
+      "item": [
+        {
+          "name": "Execute DMN Decision",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiryType\": \"TECH_SUPPORT\",\n  \"priority\": \"HIGH\",\n  \"userRole\": \"TECHNICAL\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get DMN Decision Result",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiryType\": \"TECH_SUPPORT\",\n  \"priority\": \"HIGH\",\n  \"userRole\": \"TECHNICAL\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675/dmnresult",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675",
+                "dmnresult"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get DMN Definition",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "DMN_71C65A03-6C81-4FCF-AEF6-C1C86279E675"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Job Management v1",
+      "item": [
+        {
+          "name": "Create Job v1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processInstanceId\": \"{{enquiry_process_id}}\",\n  \"processId\": \"EnquiryProcess\",\n  \"priority\": 1,\n  \"callbackEndpoint\": \"http://localhost:8080/callback\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/jobs",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "jobs"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Job Management v2",
+      "item": [
+        {
+          "name": "Create Job v2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correlationId\": \"enquiry-job-{{enquiry_process_id}}\",\n  \"schedule\": {\n    \"type\": \"immediate\"\n  },\n  \"retry\": {\n    \"maxRetries\": 3,\n    \"delay\": 1000,\n    \"delayUnit\": \"MILLIS\"\n  },\n  \"recipient\": {\n    \"type\": \"http\",\n    \"endpoint\": \"http://localhost:8080/callback\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/v2/jobs",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "v2",
+                "jobs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Job v2",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/v2/jobs/{{job_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "v2",
+                "jobs",
+                "{{job_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Job v2",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/v2/jobs/{{job_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "v2",
+                "jobs",
+                "{{job_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process Management",
+      "item": [
+        {
+          "name": "Get All Processes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Info",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Nodes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/nodes",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "nodes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Source",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/source",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Sources",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/sources",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "sources"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process Instance Management",
+      "item": [
+        {
+          "name": "Cancel Process Instance",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Instance Error",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}/error",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}",
+                "error"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Work Items in Process Instance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}/nodeInstances",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}",
+                "nodeInstances"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retrigger Instance in Error",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}/retrigger",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}",
+                "retrigger"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Skip Instance in Error",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}/skip",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}",
+                "skip"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Timers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/EnquiryProcess/instances/{{enquiry_process_id}}/timers",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}",
+                "timers"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Tasks Management",
+      "item": [
+        {
+          "name": "List User Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task Attachments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/attachments?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "attachments"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Task Attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Attachment\",\n  \"uri\": \"http://example.com/attachment.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/attachments?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "attachments"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task Comments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/comments?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Task Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"This is a test comment on the task\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/comments?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set Task Inputs",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Task Input Update\",\n    \"description\": \"Updated via task inputs\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/inputs?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "inputs"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set Task Outputs",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Task Output Update\",\n    \"description\": \"Updated via task outputs\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RESOLVED\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/outputs?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "outputs"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task Transitions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/transition?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Execute Task Transition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transitionId\": \"complete\",\n  \"data\": {\n    \"enquiry\": {\n      \"title\": \"Task Completed\",\n      \"description\": \"Task completed via transition\",\n      \"type\": \"TECH_SUPPORT\",\n      \"status\": \"RESOLVED\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{current_task_id}}/transition?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{current_task_id}}",
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process Visualization",
+      "item": [
+        {
+          "name": "Get Process SVG",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/svg/processes/EnquiryProcess",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "svg",
+                "processes",
+                "EnquiryProcess"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Execution Path SVG",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/svg/processes/EnquiryProcess/instances/{{enquiry_process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "svg",
+                "processes",
+                "EnquiryProcess",
+                "instances",
+                "{{enquiry_process_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Resource Management",
+      "item": [
+        {
+          "name": "List Test Resources",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Test Resources:', JSON.stringify(response, null, 2));",
+                  "    if (response.length > 0) {",
+                  "        // Set the first test resource ID for testing",
+                  "        const firstTest = response[0];",
+                  "        if (firstTest.id) {",
+                  "            pm.collectionVariables.set('test_resource_id', firstTest.id);",
+                  "            console.log('\u2705 Set test_resource_id to first test:', firstTest.id);",
+                  "        }",
+                  "        // Log all available test resource IDs",
+                  "        console.log('\ud83d\udcdd Available Test Resource IDs:');",
+                  "        response.forEach((test, index) => {",
+                  "            console.log(`  ${index + 1}. ID: ${test.id}, Text: ${test.text || 'N/A'}`);",
+                  "        });",
+                  "    } else {",
+                  "        console.log('\u274c No test resources found');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Test Resource",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Test resource created by {{current_username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test?businessKey=test-{{test_resource_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test"
+              ],
+              "query": [
+                {
+                  "key": "businessKey",
+                  "value": "test-{{test_resource_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udcdd Response Status Code:', pm.response.code);",
+                  "console.log('\ud83d\udcdd Response Body:', pm.response.text());",
+                  "",
+                  "// Handle both 200 and 201 status codes",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Parsed response:', JSON.stringify(response, null, 2));",
+                  "    ",
+                  "    // Set test resource ID",
+                  "    pm.collectionVariables.set('test_resource_id', response.id);",
+                  "    console.log('\u2705 Test resource created with ID:', response.id);",
+                  "    console.log('\ud83d\udcdd Test resource text:', response.text);",
+                  "} else {",
+                  "    console.log('\u274c Request failed with status:', pm.response.code);",
+                  "    console.log('Response body:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Test Resource",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Test Resource response:', JSON.stringify(response, null, 2));",
+                  "    ",
+                  "    // Set test resource ID",
+                  "    const testResourceId = response.id;",
+                  "    pm.collectionVariables.set('test_resource_id', testResourceId);",
+                  "    console.log('\ud83d\udcdd Test resource ID extracted:', testResourceId);",
+                  "    console.log('\ud83d\udcdd Test resource text:', response.text);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Test Resource",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Updated test resource by {{current_username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Patch Test Resource",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Patched test resource by {{current_username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Test Resource",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Resource Tasks",
+      "item": [
+        {
+          "name": "Get Test Resource Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/tasks?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Test Resource Tasks:', JSON.stringify(response, null, 2));",
+                  "    if (response.length > 0) {",
+                  "        pm.collectionVariables.set('test_task_id', response[0].id);",
+                  "        console.log('\ud83d\udcdd Set test_task_id to:', response[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Test Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Task/{{test_task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Task",
+                "{{test_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Test Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Task updated by {{current_username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Task/{{test_task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Task",
+                "{{test_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Complete Test Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Task completed by {{current_username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Task/{{test_task_id}}?user={{current_username}}&phase=complete",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Task",
+                "{{test_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                },
+                {
+                  "key": "phase",
+                  "value": "complete"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Abort Test Task",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Task/{{test_task_id}}?user={{current_username}}&phase=abort",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Task",
+                "{{test_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                },
+                {
+                  "key": "phase",
+                  "value": "abort"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Test Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Task/{{test_task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Task",
+                "{{test_task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Resource Signals",
+      "item": [
+        {
+          "name": "Test Update Signal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"Test update signal triggered by {{current_username}}\""
+            },
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/update",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "update"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pre-request validation",
+                  "const testResourceId = pm.collectionVariables.get('test_resource_id');",
+                  "if (!testResourceId) {",
+                  "    console.log('\u274c ERROR: test_resource_id is not set!');",
+                  "    console.log('Please run one of these requests first:');",
+                  "    console.log('1. List Test Resources');",
+                  "    console.log('2. Create Test Resource');",
+                  "    console.log('3. Get Test Resource');",
+                  "    throw new Error('test_resource_id variable is not set');",
+                  "}",
+                  "console.log('\ud83d\udcdd Using test_resource_id:', testResourceId);",
+                  "console.log('\ud83d\udcdd Full URL will be:', pm.collectionVariables.get('quarkus_base_url') + '/test/' + testResourceId + '/update');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udcac Test Update Signal Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Test update signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Test update signal failed:', pm.response.text());",
+                  "    console.log('Make sure test_resource_id is set correctly');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test Event Sub-process Signal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/test/{{test_resource_id}}/Event_Sub-process",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "test",
+                "{{test_resource_id}}",
+                "Event_Sub-process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pre-request validation",
+                  "const testResourceId = pm.collectionVariables.get('test_resource_id');",
+                  "if (!testResourceId) {",
+                  "    console.log('\u274c ERROR: test_resource_id is not set!');",
+                  "    console.log('Please run one of these requests first:');",
+                  "    console.log('1. List Test Resources');",
+                  "    console.log('2. Create Test Resource');",
+                  "    console.log('3. Get Test Resource');",
+                  "    throw new Error('test_resource_id variable is not set');",
+                  "}",
+                  "console.log('\ud83d\udcdd Using test_resource_id:', testResourceId);",
+                  "console.log('\ud83d\udcdd Full URL will be:', pm.collectionVariables.get('quarkus_base_url') + '/test/' + testResourceId + '/Event_Sub-process');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('\ud83d\udcac Test Event Sub-process Signal Test');",
+                  "console.log('Response Status:', pm.response.code);",
+                  "console.log('Response Body:', pm.response.text());",
+                  "if (pm.response.code === 200) {",
+                  "    console.log('\u2705 Test event sub-process signal sent successfully');",
+                  "} else {",
+                  "    console.log('\u274c Test event sub-process signal failed:', pm.response.text());",
+                  "    console.log('Make sure test_resource_id is set correctly');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Process Management",
+      "item": [
+        {
+          "name": "List Processes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd Processes:', JSON.stringify(response, null, 2));",
+                  "    if (response.length > 0) {",
+                  "        pm.collectionVariables.set('process_id', response[0].id);",
+                  "        console.log('\u2705 Set process_id to:', response[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Process Info",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Sources",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/sources",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "sources"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Source",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/source",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "source"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Sources by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/sources",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "sources"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Nodes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/nodes",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "nodes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Migrate Process",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/migrate",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "migrate"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process Instance Management",
+      "item": [
+        {
+          "name": "Get Process Instance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Process Instance",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Error",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/error",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "error"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Migrate Process Instance",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/migrate",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "migrate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Node Instances",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/nodeInstances",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "nodeInstances"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Node Instance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/nodeInstances/{{node_instance_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "nodeInstances",
+                "{{node_instance_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Node Instance SLA",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/nodeInstances/{{node_instance_id}}/sla",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "nodeInstances",
+                "{{node_instance_id}}",
+                "sla"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Node Instance Timers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/nodeInstances/{{node_instance_id}}/timers",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "nodeInstances",
+                "{{node_instance_id}}",
+                "timers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Node",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/nodes/{{node_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "nodes",
+                "{{node_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retrigger Process Instance",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/retrigger",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "retrigger"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Skip Process Instance",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/skip",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "skip"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance SLA",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/sla",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "sla"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Instance Timers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/management/processes/{{process_id}}/instances/{{process_instance_id}}/timers",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "management",
+                "processes",
+                "{{process_id}}",
+                "instances",
+                "{{process_instance_id}}",
+                "timers"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Tasks Management",
+      "item": [
+        {
+          "name": "List User Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('\ud83d\udcdd User Tasks:', JSON.stringify(response, null, 2));",
+                  "    if (response.length > 0) {",
+                  "        pm.collectionVariables.set('user_task_id', response[0].id);",
+                  "        console.log('\u2705 Set user_task_id to:', response[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Attachments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/attachments",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "attachments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Attachment",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/attachments/{{attachment_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "attachments",
+                "{{attachment_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Comments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/comments",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Comment",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/comments/{{comment_id}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "comments",
+                "{{comment_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Inputs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/inputs",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "inputs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Task Outputs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/outputs",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "outputs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transition User Task",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/usertasks/instance/{{user_task_id}}/transition",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "usertasks",
+                "instance",
+                "{{user_task_id}}",
+                "transition"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Enhanced Enquiry Process Services",
+      "item": [
+        {
+          "name": "Add Comment Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Add_Comment/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Add_Comment",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Comment Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Add_Comment/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Add_Comment",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Comment Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Add_Comment/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Add_Comment",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enquiry Reopen Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Enquiry_Reopen/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Enquiry_Reopen",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enquiry Reopen Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Enquiry_Reopen/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Enquiry_Reopen",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enquiry Reopen Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Enquiry_Reopen/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Enquiry_Reopen",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Cancel Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_cancel/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_cancel",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Cancel Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_cancel/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_cancel",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Cancel Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_cancel/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_cancel",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Closed Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Closed/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Closed",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Closed Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Closed/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Closed",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Closed Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Closed/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Closed",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Create Enquiry Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Create_Enquiry/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Create_Enquiry",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Create Enquiry Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Create_Enquiry/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Create_Enquiry",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Create Enquiry Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Create_Enquiry/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Create_Enquiry",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Resolved Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Resolved/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Resolved",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Resolved Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Resolved/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Resolved",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Resolved Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Service_Task_Resolved/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Service_Task_Resolved",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Support Service Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/TaskSupport/{{task_id}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "TaskSupport",
+                "{{task_id}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Support Service Task Phase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/TaskSupport/{{task_id}}/phases/{{phase}}?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "TaskSupport",
+                "{{task_id}}",
+                "phases",
+                "{{phase}}"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Task Support Service Task Schema",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/TaskSupport/{{task_id}}/schema?user={{current_username}}",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "TaskSupport",
+                "{{task_id}}",
+                "schema"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{current_username}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Enquiry Process Sub-Processes",
+      "item": [
+        {
+          "name": "Sub Add Comments",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Sub_Add_Comments",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Sub_Add_Comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sub Cancel Enquiry",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Sub_Cancel_Enquiry",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Sub_Cancel_Enquiry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sub Close Enquiry",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Sub_Close_Enquiry",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Sub_Close_Enquiry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sub Reopen Enquiry",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Sub_Reopn_Enquiry",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Sub_Reopn_Enquiry"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sub Resolve Enquiry",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{quarkus_base_url}}/EnquiryProcess/{{process_instance_id}}/Sub_Resove_Enquiry",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "EnquiryProcess",
+                "{{process_instance_id}}",
+                "Sub_Resove_Enquiry"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health and Monitoring",
+      "item": [
+        {
+          "name": "Quarkus Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/health",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quarkus Health Live",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/health/live",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "health",
+                "live"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quarkus Health Ready",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/health/ready",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "health",
+                "ready"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quarkus Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/metrics",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "metrics"
+              ]
+            }
+          }
+        },
+        {
+          "name": "OpenAPI Documentation",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{quarkus_base_url}}/q/docs",
+              "host": [
+                "{{quarkus_base_url}}"
+              ],
+              "path": [
+                "q",
+                "docs"
               ]
             }
           }
