@@ -1,43 +1,44 @@
 # RBAC Configuration for Quarkus BAMOE Application
-# Format: type:name[:assignment]
+# Format: type|name|assignment (using pipe delimiter consistently)
 
 # Cleanup - Remove all existing roles, groups, and users from realm
-cleanup:all
+cleanup|all
 
 # Clients - OAuth2/OIDC clients for applications
 # Format: client|clientId|clientSecret|description|redirectUri (for public clients)
-client|quarkus-bamoe-app|quarkus-bamoe-secret|Quarkus BAMOE Business Process Application
+client|quarkus-bamoe-app|quarkus-bamoe-secret|Quarkus BAMOE Business Process Application|
 client|quarkus-bamoe-frontend|public|Quarkus BAMOE Frontend Application|http://localhost:4200/*
 public-client|bamoe-management-console|BAMOE Management Console|http://localhost:9280/*
-client|spring-boot-api|spring-boot-secret|Spring Boot Application
+client|spring-boot-api|spring-boot-secret|Spring Boot Application|
 
 # Roles
-role:admin
-role:user
-role:manager
-role:tech-support
-role:business-support
+role|admin
+role|user
+role|manager
+role|analyst
+role|tech-support
+role|business-support
 
 # Service Account Roles (for client_credentials flow)
-# Format: service-account-role:clientId:role
-service-account-role:quarkus-bamoe-app:admin
-# service-account-role:bamoe-management-console:admin  # Not needed for public clients
+# Format: service-account-role|clientId|role
+service-account-role|quarkus-bamoe-app|admin
+# service-account-role|bamoe-management-console|admin  # Not needed for public clients
 
 # Groups and their assigned roles
-group:Admins:admin
-group:Managers:manager
-group:Users:user
-group:Analysts:analyst
-group:TechSupport:tech-support
-group:BusinessSupport:business-support
+group|Admins|admin
+group|Managers|manager
+group|Users|user
+group|Analysts|analyst
+group|TechSupport|tech-support
+group|BusinessSupport|business-support
 
 # Users and their details
-# Format: user:username:email:firstName:lastName:password:group
-user:admin:admin@example.com:Admin:User:admin123:Admins
-user:manager1:manager1@example.com:Manager:One:manager123:Managers
-user:user1:user1@example.com:User:One:user123:Users
-user:analyst1:analyst1@example.com:Analyst:One:analyst123:Analysts
-user:tech1:tech1@example.com:Tech:Support:tech123:TechSupport
-user:tech2:tech2@example.com:Technical:Support:tech456:TechSupport
-user:business1:business1@example.com:Business:Support:business123:BusinessSupport
-user:business2:business2@example.com:Business:Analyst:business456:BusinessSupport
+# Format: user|username|email|firstName|lastName|password|group
+user|admin|admin@example.com|Admin|User|admin123|Admins
+user|manager1|manager1@example.com|Manager|One|manager123|Managers
+user|user1|user1@example.com|User|One|user123|Users
+user|analyst1|analyst1@example.com|Analyst|One|analyst123|Analysts
+user|tech1|tech1@example.com|Tech|Support|tech123|TechSupport
+user|tech2|tech2@example.com|Technical|Support|tech456|TechSupport
+user|business1|business1@example.com|Business|Support|business123|BusinessSupport
+user|business2|business2@example.com|Business|Analyst|business456|BusinessSupport

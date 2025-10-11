@@ -23,6 +23,7 @@ export interface Task {
   status: TaskStatus;
   formKey?: string;
   variables: Record<string, any>;
+  externalReferenceId?: string; // For TaskSupport endpoint
 }
 
 export interface TaskForm {

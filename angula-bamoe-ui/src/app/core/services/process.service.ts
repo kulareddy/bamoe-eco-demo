@@ -1,9 +1,11 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ProcessInstance, Task, TaskForm } from '../models/process.model';
 import { Enquiry, Comment } from '../models/enquiry.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +13,7 @@ import { Enquiry, Comment } from '../models/enquiry.model';
 export class ProcessService {
   private apiUrl = environment.api.processService;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
   // Process Instance Management - Quarkus BAMOE
   getAllProcesses(): Observable<ProcessInstance[]> {
@@ -49,12 +51,60 @@ export class ProcessService {
   }
 
   getAllTasks(): Observable<Task[]> {
-    // Use usertasks API - token contains user and group info automatically
-    return this.http.get<Task[]>(`${this.apiUrl}/usertasks/instance`);
+    // Use usertasks API - token contains user information
+    return this.http.get<any[]>(`${this.apiUrl}/usertasks/instance`)
+      .pipe(
+        map(bamoeTasks => bamoeTasks.map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask))),
+        catchError(error => {
+          console.error('Error loading tasks:', error);
+          return of([]);
+        })
+      );
+  }
+
+  private mapBamoeTaskToTask(bamoeTask: any): Task {
+    return {
+      id: bamoeTask.id,
+      name: bamoeTask.taskName,
+      description: bamoeTask.taskDescription,
+      processInstanceId: bamoeTask.metadata?.ProcessInstanceId || '',
+      assignee: bamoeTask.actualOwner,
+      candidateGroups: bamoeTask.potentialGroups || [],
+      candidateUsers: bamoeTask.potentialUsers || [],
+      created: new Date(), // BAMOE doesn't provide created date in this response
+      due: undefined, // BAMOE doesn't provide due date in this response
+      priority: bamoeTask.taskPriority || 0,
+      status: this.mapBamoeStatusToTaskStatus(bamoeTask.status?.name),
+      formKey: undefined,
+      variables: bamoeTask.inputs || {},
+      // Store the external reference ID for TaskSupport endpoint
+      externalReferenceId: bamoeTask.externalReferenceId
+    };
+  }
+
+  private mapBamoeStatusToTaskStatus(bamoeStatus: string): any {
+    switch (bamoeStatus?.toLowerCase()) {
+      case 'ready': return 'READY';
+      case 'reserved': return 'RESERVED';
+      case 'in_progress': return 'IN_PROGRESS';
+      case 'completed': return 'COMPLETED';
+      case 'failed': return 'FAILED';
+      case 'error': return 'ERROR';
+      case 'exited': return 'EXITED';
+      case 'obsolete': return 'OBSOLETE';
+      default: return 'CREATED';
+    }
   }
 
   getTaskById(taskId: string): Observable<Task> {
-    return this.http.get<Task>(`${this.apiUrl}/usertasks/instance/${taskId}`);
+    return this.http.get<any>(`${this.apiUrl}/usertasks/instance/${taskId}`)
+      .pipe(
+        map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask)),
+        catchError(error => {
+          console.error('Error loading task:', error);
+          throw error;
+        })
+      );
   }
 
   // User Task Management - using usertasks API
@@ -78,16 +128,48 @@ export class ProcessService {
     return this.http.get<any[]>(`${this.apiUrl}/usertasks/instance/${taskId}/attachments`);
   }
 
+  // Process-specific task operations (for TaskSupport tasks)
+  claimProcessTask(processInstanceId: string, taskId: string): Observable<any> {
+    // For claiming tasks, use the generic usertasks endpoint with TransitionInfo schema
+    return this.http.post<any>(`${this.apiUrl}/usertasks/instance/${taskId}/transition`, {
+      transitionId: "claim"
+    });
+  }
+
+  completeProcessTask(processInstanceId: string, taskId: string, formData?: any): Observable<any> {
+    // Use PUT endpoint for completing TaskSupport tasks with task output schema
+    return this.http.put(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/TaskSupport/${taskId}`, formData || {});
+  }
+
+  getProcessTask(processInstanceId: string, taskId: string): Observable<any> {
+    // Use GET endpoint for retrieving TaskSupport task details
+    return this.http.get(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/TaskSupport/${taskId}`);
+  }
+
+  // Generic user task operations (for general usertasks)
   claimTask(taskId: string): Observable<Task> {
-    return this.http.post<Task>(`${this.apiUrl}/tasks/${taskId}/claim`, {});
+    return this.http.post<any>(`${this.apiUrl}/usertasks/instance/${taskId}/transition`, {
+      transitionId: "claim"
+    }).pipe(
+      map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask))
+    );
   }
 
   releaseTask(taskId: string): Observable<Task> {
-    return this.http.post<Task>(`${this.apiUrl}/tasks/${taskId}/release`, {});
+    return this.http.post<any>(`${this.apiUrl}/usertasks/instance/${taskId}/transition`, {
+      transitionId: "release"
+    }).pipe(
+      map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask))
+    );
   }
 
   completeTask(taskId: string, formData?: any): Observable<Task> {
-    return this.http.post<Task>(`${this.apiUrl}/tasks/${taskId}/complete`, formData || {});
+    return this.http.post<any>(`${this.apiUrl}/usertasks/instance/${taskId}/transition`, {
+      transitionId: "complete",
+      data: formData || {}
+    }).pipe(
+      map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask))
+    );
   }
 
   getTaskForm(taskId: string): Observable<any> {
@@ -100,7 +182,7 @@ export class ProcessService {
   }
 
   getProcessInfo(processId: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/process/${processId}`);
+    return this.http.get(`${this.apiUrl}/EnquiryProcess/${processId}`);
   }
 
   getProcessSvg(processId: string): Observable<string> {
@@ -117,7 +199,13 @@ export class ProcessService {
   }
 
   getProcessVariables(processId: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}/nodeInstances`);
+    // Try the variables endpoint first, fallback to process instance data
+    return this.http.get<any>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}/variables`).pipe(
+      catchError(() => {
+        // Fallback to process instance data which might contain variables
+        return this.http.get<any>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}`);
+      })
+    );
   }
 
   getProcessHistory(processId: string): Observable<any[]> {
@@ -130,6 +218,39 @@ export class ProcessService {
 
   getProcessImage(processId: string): Observable<string> {
     return this.http.get(`${this.apiUrl}/svg/processes/EnquiryProcess/instances/${processId}`, { responseType: 'text' });
+  }
+
+  // Process Comments - Use BAMOE process endpoint with Note object
+  getProcessComments(processInstanceId: string): Observable<Comment[]> {
+    // Get comments from process instance variables (enquiry.comments)
+    return this.http.get<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}`)
+      .pipe(
+        map(processInstance => {
+          const enquiry = processInstance.variables?.enquiry;
+          return enquiry?.comments || [];
+        }),
+        catchError(error => {
+          console.error('Error loading process comments:', error);
+          return of([]);
+        })
+      );
+  }
+
+  addProcessComment(processInstanceId: string, comment: Comment): Observable<Comment> {
+    // Add comment using BAMOE process endpoint with Note object
+    const noteData = {
+      comment: comment.comment,
+      commentedBy: comment.commentedBy,
+      commentedAt: comment.commentedAt
+    };
+
+    return this.http.post<Comment>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, noteData)
+      .pipe(
+        catchError(error => {
+          console.error('Error adding process comment:', error);
+          throw error;
+        })
+      );
   }
 
 }

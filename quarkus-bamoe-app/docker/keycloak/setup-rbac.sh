@@ -133,16 +133,16 @@ show_info() {
     if [ $? -eq 0 ] && [ -f "$rbac_file_path" ]; then
         echo "Clients:"
         while IFS= read -r line; do
-            [[ "$line" =~ ^client: ]] || [[ "$line" =~ ^public-client: ]] || continue
-            if [[ "$line" =~ ^public-client: ]]; then
-                local client_id=$(echo "$line" | cut -d':' -f2)
+            [[ "$line" =~ ^client\| ]] || [[ "$line" =~ ^public-client\| ]] || continue
+            if [[ "$line" =~ ^public-client\| ]]; then
+                local client_id=$(echo "$line" | cut -d'|' -f2)
                 local client_secret="public"
-                local description=$(echo "$line" | cut -d':' -f3)
+                local description=$(echo "$line" | cut -d'|' -f3)
                 local client_type="Public"
             else
-                local client_id=$(echo "$line" | cut -d':' -f2)
-                local client_secret=$(echo "$line" | cut -d':' -f3)
-                local description=$(echo "$line" | cut -d':' -f4)
+                local client_id=$(echo "$line" | cut -d'|' -f2)
+                local client_secret=$(echo "$line" | cut -d'|' -f3)
+                local description=$(echo "$line" | cut -d'|' -f4)
                 local client_type="Confidential"
                 [ "$client_secret" = "public" ] && client_type="Public"
             fi
@@ -152,19 +152,19 @@ show_info() {
         echo ""
         echo "Roles:"
         while IFS= read -r line; do
-            [[ "$line" =~ ^role: ]] || continue
-            local role_name=$(echo "$line" | cut -d':' -f2)
+            [[ "$line" =~ ^role\| ]] || continue
+            local role_name=$(echo "$line" | cut -d'|' -f2)
             echo "  - $role_name"
         done < "$rbac_file_path"
         
         echo ""
         echo "Users:"
         while IFS= read -r line; do
-            [[ "$line" =~ ^user: ]] || continue
-            local username=$(echo "$line" | cut -d':' -f2)
-            local email=$(echo "$line" | cut -d':' -f3)
-            local first_name=$(echo "$line" | cut -d':' -f4)
-            local last_name=$(echo "$line" | cut -d':' -f5)
+            [[ "$line" =~ ^user\| ]] || continue
+            local username=$(echo "$line" | cut -d'|' -f2)
+            local email=$(echo "$line" | cut -d'|' -f3)
+            local first_name=$(echo "$line" | cut -d'|' -f4)
+            local last_name=$(echo "$line" | cut -d'|' -f5)
             echo "  - $username ($first_name $last_name) - $email"
         done < "$rbac_file_path"
     fi
@@ -195,16 +195,16 @@ get_test_token() {
     fi
     
     # Find the first client in the configuration file
-    local client_line=$(grep "^client:" "$rbac_file_path" | head -1)
+    local client_line=$(grep "^client|" "$rbac_file_path" | head -1)
     if [ -z "$client_line" ]; then
         echo -e "${RED}❌ No clients found in RBAC configuration${NC}"
         return 1
     fi
     
     # Parse client information
-    local client_id=$(echo "$client_line" | cut -d':' -f2)
-    local client_secret=$(echo "$client_line" | cut -d':' -f3)
-    local app_name=$(echo "$client_line" | cut -d':' -f4)
+    local client_id=$(echo "$client_line" | cut -d'|' -f2)
+    local client_secret=$(echo "$client_line" | cut -d'|' -f3)
+    local app_name=$(echo "$client_line" | cut -d'|' -f4)
     
     # If client_secret is "public", it's a public client
     if [ "$client_secret" = "public" ]; then
@@ -307,9 +307,9 @@ cleanup_rbac() {
         fi
     done
     
-    # Get all realm roles and delete custom ones (keep default roles)
+    # Get all realm roles and delete all roles (including default roles)
     local roles=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/roles" \
-        -H "Authorization: Bearer $token" | jq -r '.[] | select(.name != "default-roles-'$REALM_NAME'" and .name != "offline_access" and .name != "uma_authorization") | .name')
+        -H "Authorization: Bearer $token" | jq -r '.[] | .name')
     
     for role_name in $roles; do
         if [ ! -z "$role_name" ] && [ "$role_name" != "null" ]; then
@@ -690,9 +690,9 @@ check_and_restore_clients() {
         [ "$line" != "${line#\#}" ] && continue
         [ -z "$line" ] && continue
         
-        local cmd=$(echo "$line" | cut -d':' -f1)
+        local cmd=$(echo "$line" | cut -d'|' -f1)
         if [ "$cmd" = "client" ] || [ "$cmd" = "public-client" ]; then
-            local client_id=$(echo "$line" | cut -d':' -f2)
+            local client_id=$(echo "$line" | cut -d'|' -f2)
             expected_clients+=("$client_id")
         fi
     done < "$rbac_file_path"
@@ -729,7 +729,7 @@ check_and_restore_clients() {
         [ "$line" != "${line#\#}" ] && continue
         [ -z "$line" ] && continue
         
-        local cmd=$(echo "$line" | cut -d':' -f1)
+        local cmd=$(echo "$line" | cut -d'|' -f1)
         if [ "$cmd" = "client" ] || [ "$cmd" = "public-client" ]; then
             if [ "$cmd" = "public-client" ]; then
                 local client_id=$(echo "$line" | cut -d'|' -f2)
@@ -1022,28 +1022,15 @@ setup_rbac() {
         [ "$line" != "${line#\#}" ] && continue
         [ -z "$line" ] && continue
         
-        # Parse line using appropriate delimiter based on command type
-        local cmd=$(echo "$line" | cut -d':' -f1)
-        
-        # For client commands, use pipe delimiter to handle URLs with colons
-        if [ "$cmd" = "client" ] || [ "$cmd" = "public-client" ]; then
-            local arg1=$(echo "$line" | cut -d'|' -f2)
-            local arg2=$(echo "$line" | cut -d'|' -f3)
-            local arg3=$(echo "$line" | cut -d'|' -f4)
-            local arg4=$(echo "$line" | cut -d'|' -f5)
-            local arg5=$(echo "$line" | cut -d'|' -f6)
-            local arg6=$(echo "$line" | cut -d'|' -f7)
-            local arg7=$(echo "$line" | cut -d'|' -f8)
-        else
-            # For other commands (role, group, user), use colon delimiter
-            local arg1=$(echo "$line" | cut -d':' -f2)
-            local arg2=$(echo "$line" | cut -d':' -f3)
-            local arg3=$(echo "$line" | cut -d':' -f4)
-            local arg4=$(echo "$line" | cut -d':' -f5)
-            local arg5=$(echo "$line" | cut -d':' -f6)
-            local arg6=$(echo "$line" | cut -d':' -f7)
-            local arg7=$(echo "$line" | cut -d':' -f8)
-        fi
+        # Parse line using pipe delimiter consistently for all commands
+        local cmd=$(echo "$line" | cut -d'|' -f1)
+        local arg1=$(echo "$line" | cut -d'|' -f2)
+        local arg2=$(echo "$line" | cut -d'|' -f3)
+        local arg3=$(echo "$line" | cut -d'|' -f4)
+        local arg4=$(echo "$line" | cut -d'|' -f5)
+        local arg5=$(echo "$line" | cut -d'|' -f6)
+        local arg6=$(echo "$line" | cut -d'|' -f7)
+        local arg7=$(echo "$line" | cut -d'|' -f8)
         
         echo -e "${YELLOW}   Command: $cmd, Args: $arg1, $arg2, $arg3${NC}"
         

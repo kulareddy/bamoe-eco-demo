@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 
 import { ProcessService } from '../../../core/services/process.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -54,7 +54,7 @@ import { Task } from '../../../core/models/process.model';
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
             <td mat-cell *matCellDef="let task">
-              <mat-chip [class]="'status-chip ' + task.status.toLowerCase()">{{ task.status }}</mat-chip>
+              <mat-chip [class]="'status-chip ' + getTaskStatusClass(task.status)">{{ task.status }}</mat-chip>
             </td>
           </ng-container>
 
@@ -75,20 +75,49 @@ import { Task } from '../../../core/models/process.model';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let task">
-              <button mat-icon-button [routerLink]="['/tasks', task.id]" title="View Task">
-                <mat-icon>visibility</mat-icon>
-              </button>
-              <button mat-icon-button 
+              <!-- Ready State: Show Claim button -->
+              <button mat-raised-button 
+                      color="primary"
                       (click)="claimTask(task)" 
-                      *ngIf="canClaim(task)"
+                      *ngIf="isTaskReady(task)"
                       title="Claim Task">
                 <mat-icon>assignment_ind</mat-icon>
+                Claim Task
               </button>
+              
+              <!-- Reserved State: Show Work on Task button -->
+              <button mat-raised-button 
+                      color="accent"
+                      (click)="workOnTask(task)" 
+                      *ngIf="isTaskReserved(task)"
+                      title="Work on Task">
+                <mat-icon>edit</mat-icon>
+                Work on Task
+              </button>
+              
+              <!-- In Progress State: Show Complete button -->
+              <button mat-raised-button 
+                      color="primary"
+                      (click)="completeTask(task)" 
+                      *ngIf="isTaskInProgress(task)"
+                      title="Complete Task">
+                <mat-icon>check_circle</mat-icon>
+                Complete
+              </button>
+              
+              <!-- Release button for reserved/in-progress tasks -->
               <button mat-icon-button 
                       (click)="releaseTask(task)" 
                       *ngIf="canRelease(task)"
                       title="Release Task">
                 <mat-icon>assignment_return</mat-icon>
+              </button>
+              
+              <!-- View button for all states -->
+              <button mat-icon-button 
+                      [routerLink]="['/tasks', task.id]" 
+                      title="View Task Details">
+                <mat-icon>visibility</mat-icon>
               </button>
             </td>
           </ng-container>
@@ -187,7 +216,8 @@ export class TaskListComponent implements OnInit {
 
   constructor(
     private processService: ProcessService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -222,17 +252,31 @@ export class TaskListComponent implements OnInit {
   }
 
   claimTask(task: Task): void {
-    this.processService.claimTask(task.id).subscribe({
-      next: () => {
-        this.loadTasks(); // Refresh the list
-      },
-      error: (error) => {
-        console.error('Error claiming task:', error);
-      }
-    });
+    // Use process-specific endpoint for TaskSupport tasks
+    if (task.processInstanceId) {
+      this.processService.claimProcessTask(task.processInstanceId, task.id).subscribe({
+        next: () => {
+          this.loadTasks(); // Refresh the list
+        },
+        error: (error) => {
+          console.error('Error claiming task:', error);
+        }
+      });
+    } else {
+      // Fallback to generic usertasks endpoint
+      this.processService.claimTask(task.id).subscribe({
+        next: () => {
+          this.loadTasks(); // Refresh the list
+        },
+        error: (error) => {
+          console.error('Error claiming task:', error);
+        }
+      });
+    }
   }
 
   releaseTask(task: Task): void {
+    // Use generic usertasks endpoint for releasing
     this.processService.releaseTask(task.id).subscribe({
       next: () => {
         this.loadTasks(); // Refresh the list
@@ -267,5 +311,55 @@ export class TaskListComponent implements OnInit {
     if (diffDays < 0) return 'overdue';
     if (diffDays <= 2) return 'due-soon';
     return '';
+  }
+
+  getTaskStatusClass(status: any): string {
+    if (!status) return 'status-unknown';
+    
+    const statusStr = status.toString().toLowerCase();
+    return `status-${statusStr}`;
+  }
+
+  // Task State Checking Methods
+  isTaskReady(task: Task): boolean {
+    return task.status === 'READY' && !task.assignee;
+  }
+
+  isTaskReserved(task: Task): boolean {
+    return task.status === 'RESERVED' && task.assignee === this.authService.getUsername();
+  }
+
+  isTaskInProgress(task: Task): boolean {
+    return task.status === 'IN_PROGRESS' && task.assignee === this.authService.getUsername();
+  }
+
+  // Task Action Methods
+  workOnTask(task: Task): void {
+    // Navigate to task form/work page
+    this.router.navigate(['/tasks', task.id, 'work']);
+  }
+
+  completeTask(task: Task): void {
+    // Use process-specific endpoint for TaskSupport tasks
+    if (task.processInstanceId) {
+      this.processService.completeProcessTask(task.processInstanceId, task.id).subscribe({
+        next: () => {
+          this.loadTasks(); // Refresh the list
+        },
+        error: (error) => {
+          console.error('Error completing task:', error);
+        }
+      });
+    } else {
+      // Fallback to generic usertasks endpoint
+      this.processService.completeTask(task.id).subscribe({
+        next: () => {
+          this.loadTasks(); // Refresh the list
+        },
+        error: (error) => {
+          console.error('Error completing task:', error);
+        }
+      });
+    }
   }
 }

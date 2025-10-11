@@ -14,7 +14,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { ProcessService } from '../../../core/services/process.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Enquiry, EnquiryStatus, Comment } from '../../../core/models/enquiry.model';
+import { Enquiry, EnquiryStatus } from '../../../core/models/enquiry.model';
 import { ProcessInstance, Task } from '../../../core/models/process.model';
 import { ProcessVisualizationComponent } from '../../../shared/components/process-visualization/process-visualization.component';
 
@@ -165,29 +165,6 @@ import { ProcessVisualizationComponent } from '../../../shared/components/proces
             </mat-card-content>
           </mat-card>
 
-          <!-- Comments -->
-          <mat-card class="comments-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>comment</mat-icon>
-                Comments
-              </mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div *ngIf="enquiry.comments && enquiry.comments.length > 0; else noComments">
-                <div *ngFor="let comment of enquiry.comments" class="comment-item">
-                  <div class="comment-header">
-                    <strong>{{ comment.commentedBy.name }}</strong>
-                    <span class="comment-date">{{ comment.commentedAt | date:'short' }}</span>
-                  </div>
-                  <div class="comment-content">{{ comment.comment }}</div>
-                </div>
-              </div>
-              <ng-template #noComments>
-                <p class="no-comments">No comments yet.</p>
-              </ng-template>
-            </mat-card-content>
-          </mat-card>
         </div>
       </div>
 
@@ -309,38 +286,6 @@ import { ProcessVisualizationComponent } from '../../../shared/components/proces
       border-bottom: none;
     }
 
-    .comment-item {
-      padding: 16px 0;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .comment-item:last-child {
-      border-bottom: none;
-    }
-
-    .comment-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .comment-date {
-      color: #666;
-      font-size: 12px;
-    }
-
-    .comment-content {
-      color: #333;
-      line-height: 1.5;
-    }
-
-    .no-comments {
-      text-align: center;
-      color: #666;
-      font-style: italic;
-      padding: 20px;
-    }
 
     .error-container {
       text-align: center;
@@ -663,36 +608,4 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     return this.enquiry?.status === EnquiryStatus.RESOLVED;
   }
 
-  // Comment Management
-  addComment(): void {
-    if (!this.enquiry?.id) return;
-
-    // Get current user from token
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser) {
-      this.snackBar.open('User not authenticated', 'Close', { duration: 3000 });
-      return;
-    }
-
-    const comment: Partial<Comment> = {
-      comment: 'Test comment', // This would come from a form input
-      commentedBy: currentUser,
-      commentedAt: new Date()
-    };
-
-    // Add comment through BAMOE process service
-    this.processService.addEnquiryComment(this.enquiry.id, comment)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          // Reload enquiry to get updated comments from Spring Boot API
-          this.loadEnquiry(this.enquiry!.id!);
-          this.snackBar.open('Comment added successfully!', 'Close', { duration: 3000 });
-        },
-        error: (error) => {
-          console.error('Error adding comment:', error);
-          this.snackBar.open('Error adding comment', 'Close', { duration: 3000 });
-        }
-      });
-  }
 }
