@@ -11,7 +11,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { EnquiryService } from '../../core/services/enquiry.service';
 import { ProcessService } from '../../core/services/process.service';
-import { Enquiry, EnquiryStatus, EnquiryType, Priority } from '../../core/models/enquiry.model';
+import { Enquiry, EnquiryStatus, EnquiryType } from '../../core/models/enquiry.model';
 import { ProcessInstance } from '../../core/models/process.model';
 
 @Component({
@@ -102,9 +102,6 @@ import { ProcessInstance } from '../../core/models/process.model';
                 <mat-chip-set>
                   <mat-chip [class]="getStatusClass(enquiry.status)">
                     {{ enquiry.status }}
-                  </mat-chip>
-                  <mat-chip [class]="getPriorityClass(enquiry.priority)" *ngIf="enquiry.priority">
-                    {{ enquiry.priority }}
                   </mat-chip>
                 </mat-chip-set>
               </div>
@@ -271,25 +268,6 @@ import { ProcessInstance } from '../../core/models/process.model';
       color: #d32f2f;
     }
 
-    .priority-low {
-      background-color: #e8f5e8;
-      color: #388e3c;
-    }
-
-    .priority-medium {
-      background-color: #fff3e0;
-      color: #f57c00;
-    }
-
-    .priority-high {
-      background-color: #ffebee;
-      color: #d32f2f;
-    }
-
-    .priority-critical {
-      background-color: #fce4ec;
-      color: #c2185b;
-    }
   `]
 })
 export class HomeComponent implements OnInit, OnDestroy {
@@ -360,8 +338,4 @@ export class HomeComponent implements OnInit, OnDestroy {
     return `status-${status.toLowerCase().replace('_', '-')}`;
   }
 
-  getPriorityClass(priority?: Priority): string {
-    if (!priority) return '';
-    return `priority-${priority.toLowerCase()}`;
-  }
 }

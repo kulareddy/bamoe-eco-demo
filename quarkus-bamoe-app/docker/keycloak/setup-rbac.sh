@@ -96,17 +96,25 @@ show_usage() {
     echo "Usage: $0 [command] [options]"
     echo ""
     echo "Commands:"
+    echo "  clean             - Clean restart: delete all clients/users and recreate from config"
     echo "  wait              - Wait for Keycloak to be ready"
     echo "  setup             - Setup RBAC from kogito-rbac.txt file"
     echo "  check-clients     - Check for missing clients and recreate them"
+    echo "  force-update-client [clientId] - Force delete and recreate a specific client"
     echo "  token [user] [pw] [client] - Get access token for testing"
     echo "  info              - Show Keycloak connection information"
     echo "  help              - Show this help message"
+    echo ""
+    echo "Configuration Format (kogito-rbac.txt):"
+    echo "  client|clientId|secret|description|redirectUri (for public clients)"
+    echo "  public-client|clientId|description|redirectUri"
+    echo "  Example: client|my-app|public|My App|http://localhost:4200/*"
     echo ""
     echo "Examples:"
     echo "  $0 wait                                    # Wait for Keycloak to be ready"
     echo "  $0 setup                                   # Setup RBAC from config file"
     echo "  $0 check-clients                           # Check and restore missing clients"
+    echo "  $0 force-update-client quarkus-bamoe-frontend # Force update specific client"
     echo "  $0 token <username> <password>             # Get token for any user"
     echo "  $0 token admin admin123                    # Get token for admin user"
 }
@@ -396,6 +404,7 @@ create_client() {
     local client_id=$2
     local client_secret=$3
     local description=$4
+    local redirect_uri=$5
     
     echo -e "${BLUE}🔧 Creating client: $client_id${NC}"
     
@@ -415,6 +424,26 @@ create_client() {
     local client_config=""
     
     if [ "$client_secret" = "public" ]; then
+        # Use redirect URI from configuration file only
+        local redirect_uris=""
+        if [ -n "$redirect_uri" ]; then
+            # Extract base URL by removing trailing /* or /
+            local base_url=$(echo "$redirect_uri" | sed 's|/\*$||' | sed 's|/$||')
+            # Use redirect URI from configuration file with common OAuth2 patterns
+            redirect_uris="[
+                \"$redirect_uri\",
+                \"$base_url/*\",
+                \"$base_url/oauth2/callback\",
+                \"$base_url/oauth2/callback/*\"
+            ]"
+        else
+            # No redirect URI specified - this is an error for public clients
+            echo -e "${RED}❌ Error: Public client '$client_id' requires redirect URI in configuration${NC}"
+            echo -e "${YELLOW}   Add redirect URI to kogito-rbac.txt:${NC}"
+            echo -e "${YELLOW}   client:$client_id:public:Description:http://localhost:PORT/*${NC}"
+            return 1
+        fi
+        
         # Public client configuration (for frontend applications)
         is_public_client="true"
         echo -e "${YELLOW}   📱 Configuring as public client (SPA/Frontend)${NC}"
@@ -430,11 +459,7 @@ create_client() {
             \"directAccessGrantsEnabled\":false,
             \"serviceAccountsEnabled\":false,
             \"authorizationServicesEnabled\":false,
-            \"redirectUris\":[
-                \"http://localhost:9280/*\",
-                \"http://localhost:9280/oauth2/callback\",
-                \"http://localhost:9280/oauth2/callback/*\"
-            ],
+            \"redirectUris\":$redirect_uris,
             \"webOrigins\":[\"*\"],
             \"attributes\":{
                 \"access.token.lifespan\":\"1800\",
@@ -707,20 +732,22 @@ check_and_restore_clients() {
         local cmd=$(echo "$line" | cut -d':' -f1)
         if [ "$cmd" = "client" ] || [ "$cmd" = "public-client" ]; then
             if [ "$cmd" = "public-client" ]; then
-                local client_id=$(echo "$line" | cut -d':' -f2)
+                local client_id=$(echo "$line" | cut -d'|' -f2)
                 local client_secret="public"
-                local description=$(echo "$line" | cut -d':' -f3)
+                local description=$(echo "$line" | cut -d'|' -f3)
+                local redirect_uri=$(echo "$line" | cut -d'|' -f4)
             else
-                local client_id=$(echo "$line" | cut -d':' -f2)
-                local client_secret=$(echo "$line" | cut -d':' -f3)
-                local description=$(echo "$line" | cut -d':' -f4)
+                local client_id=$(echo "$line" | cut -d'|' -f2)
+                local client_secret=$(echo "$line" | cut -d'|' -f3)
+                local description=$(echo "$line" | cut -d'|' -f4)
+                local redirect_uri=$(echo "$line" | cut -d'|' -f5)
             fi
             
             # Check if this client is in the missing list
             for missing_client in "${missing_clients[@]}"; do
                 if [ "$missing_client" = "$client_id" ]; then
                     echo -e "${BLUE}🔄 Recreating client: $client_id...${NC}"
-                    create_client "$token" "$client_id" "$client_secret" "$description"
+                    create_client "$token" "$client_id" "$client_secret" "$description" "$redirect_uri"
                     break
                 fi
             done
@@ -728,6 +755,131 @@ check_and_restore_clients() {
     done < "$rbac_file_path"
     
     echo -e "${GREEN}✅ Missing clients have been recreated${NC}"
+}
+
+# Function to clean restart - delete all and recreate
+clean_restart() {
+    echo -e "${YELLOW}🧹 Clean restart: deleting all clients and users...${NC}"
+    
+    wait_for_keycloak
+    
+    echo -e "${YELLOW}🔑 Getting admin token...${NC}"
+    local admin_token=$(get_admin_token)
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to get admin token${NC}"
+        return 1
+    fi
+    
+    # Delete all clients
+    echo -e "${YELLOW}🗑️  Deleting all clients...${NC}"
+    local clients=$(curl -s -H "Authorization: Bearer $admin_token" \
+        "$KEYCLOAK_URL/admin/realms/$REALM_NAME/clients" | jq -r '.[].id')
+    
+    for client_id in $clients; do
+        if [ "$client_id" != "null" ] && [ -n "$client_id" ]; then
+            curl -s -X DELETE -H "Authorization: Bearer $admin_token" \
+                "$KEYCLOAK_URL/admin/realms/$REALM_NAME/clients/$client_id" > /dev/null
+        fi
+    done
+    
+    # Delete all users (except admin)
+    echo -e "${YELLOW}🗑️  Deleting all users...${NC}"
+    local users=$(curl -s -H "Authorization: Bearer $admin_token" \
+        "$KEYCLOAK_URL/admin/realms/$REALM_NAME/users" | jq -r '.[].id')
+    
+    for user_id in $users; do
+        if [ "$user_id" != "null" ] && [ -n "$user_id" ]; then
+            curl -s -X DELETE -H "Authorization: Bearer $admin_token" \
+                "$KEYCLOAK_URL/admin/realms/$REALM_NAME/users/$user_id" > /dev/null
+        fi
+    done
+    
+    # Now run the normal setup
+    echo -e "${YELLOW}🔄 Recreating from configuration...${NC}"
+    setup_rbac "$admin_token"
+    
+    echo -e "${GREEN}✅ Clean restart completed${NC}"
+}
+
+# Function to force update a specific client
+force_update_client() {
+    local client_id=$1
+    
+    if [ -z "$client_id" ]; then
+        echo -e "${RED}❌ Error: Client ID is required${NC}"
+        echo "Usage: $0 force-update-client <clientId>"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}⏳ Waiting for Keycloak to be ready...${NC}"
+    wait_for_keycloak
+    
+    echo -e "${YELLOW}🔑 Getting admin token...${NC}"
+    local admin_token=$(get_admin_token)
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to get admin token${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}✅ Admin token obtained${NC}"
+    
+    echo -e "${YELLOW}🗑️  Deleting existing client: $client_id${NC}"
+    
+    # Get client UUID
+    local client_uuid=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=$client_id" \
+        -H "Authorization: Bearer $admin_token" | jq -r '.[0].id // empty')
+    
+    if [ -z "$client_uuid" ] || [ "$client_uuid" = "null" ]; then
+        echo -e "${YELLOW}⚠️  Client $client_id not found, nothing to delete${NC}"
+    else
+        # Delete the client
+        local delete_response=$(curl -s -X DELETE "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/$client_uuid" \
+            -H "Authorization: Bearer $admin_token")
+        
+        if [[ "$delete_response" == *"error"* ]]; then
+            echo -e "${YELLOW}⚠️  Client deletion may have failed: $delete_response${NC}"
+        else
+            echo -e "${GREEN}✅ Client $client_id deleted${NC}"
+        fi
+    fi
+    
+    echo -e "${YELLOW}🔄 Recreating client: $client_id${NC}"
+    
+    # Find the client configuration in RBAC file
+    local rbac_file_path=$(find_rbac_file)
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ RBAC file not found${NC}"
+        return 1
+    fi
+    
+    # Read client configuration from RBAC file
+    local client_line=""
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^client\|$client_id\| ]] || [[ "$line" =~ ^public-client\|$client_id\| ]]; then
+            client_line="$line"
+            break
+        fi
+    done < "$rbac_file_path"
+    
+    if [ -z "$client_line" ]; then
+        echo -e "${RED}❌ Client $client_id not found in RBAC configuration${NC}"
+        return 1
+    fi
+    
+    # Parse and create the client
+    if [[ "$client_line" =~ ^public-client\| ]]; then
+        local client_id=$(echo "$client_line" | cut -d'|' -f2)
+        local description=$(echo "$client_line" | cut -d'|' -f3)
+        local redirect_uri=$(echo "$client_line" | cut -d'|' -f4)
+        create_client "$admin_token" "$client_id" "public" "$description" "$redirect_uri"
+    else
+        local client_id=$(echo "$client_line" | cut -d'|' -f2)
+        local client_secret=$(echo "$client_line" | cut -d'|' -f3)
+        local description=$(echo "$client_line" | cut -d'|' -f4)
+        local redirect_uri=$(echo "$client_line" | cut -d'|' -f5)
+        create_client "$admin_token" "$client_id" "$client_secret" "$description" "$redirect_uri"
+    fi
+    
+    echo -e "${GREEN}✅ Client $client_id force updated successfully${NC}"
 }
 
 # Function to create user
@@ -870,14 +1022,28 @@ setup_rbac() {
         [ "$line" != "${line#\#}" ] && continue
         [ -z "$line" ] && continue
         
-        # Parse line using awk for better field splitting
+        # Parse line using appropriate delimiter based on command type
         local cmd=$(echo "$line" | cut -d':' -f1)
-        local arg1=$(echo "$line" | cut -d':' -f2)
-        local arg2=$(echo "$line" | cut -d':' -f3)
-        local arg3=$(echo "$line" | cut -d':' -f4)
-        local arg4=$(echo "$line" | cut -d':' -f5)
-        local arg5=$(echo "$line" | cut -d':' -f6)
-        local arg6=$(echo "$line" | cut -d':' -f7)
+        
+        # For client commands, use pipe delimiter to handle URLs with colons
+        if [ "$cmd" = "client" ] || [ "$cmd" = "public-client" ]; then
+            local arg1=$(echo "$line" | cut -d'|' -f2)
+            local arg2=$(echo "$line" | cut -d'|' -f3)
+            local arg3=$(echo "$line" | cut -d'|' -f4)
+            local arg4=$(echo "$line" | cut -d'|' -f5)
+            local arg5=$(echo "$line" | cut -d'|' -f6)
+            local arg6=$(echo "$line" | cut -d'|' -f7)
+            local arg7=$(echo "$line" | cut -d'|' -f8)
+        else
+            # For other commands (role, group, user), use colon delimiter
+            local arg1=$(echo "$line" | cut -d':' -f2)
+            local arg2=$(echo "$line" | cut -d':' -f3)
+            local arg3=$(echo "$line" | cut -d':' -f4)
+            local arg4=$(echo "$line" | cut -d':' -f5)
+            local arg5=$(echo "$line" | cut -d':' -f6)
+            local arg6=$(echo "$line" | cut -d':' -f7)
+            local arg7=$(echo "$line" | cut -d':' -f8)
+        fi
         
         echo -e "${YELLOW}   Command: $cmd, Args: $arg1, $arg2, $arg3${NC}"
         
@@ -888,10 +1054,10 @@ setup_rbac() {
                 fi
                 ;;
             "client")
-                create_client "$ADMIN_TOKEN" "$arg1" "$arg2" "$arg3"
+                create_client "$ADMIN_TOKEN" "$arg1" "$arg2" "$arg3" "$arg4"
                 ;;
             "public-client")
-                create_client "$ADMIN_TOKEN" "$arg1" "public" "$arg2"
+                create_client "$ADMIN_TOKEN" "$arg1" "public" "$arg2" "$arg3"
                 ;;
             "role")
                 create_role "$ADMIN_TOKEN" "$arg1"
@@ -924,6 +1090,9 @@ setup_rbac() {
 
 # Main script logic
 case "${1:-help}" in
+    "clean")
+        clean_restart
+        ;;
     "wait")
         wait_for_keycloak
         ;;
@@ -940,6 +1109,9 @@ case "${1:-help}" in
         fi
         echo -e "${GREEN}✅ Admin token obtained${NC}"
         check_and_restore_clients "$ADMIN_TOKEN"
+        ;;
+    "force-update-client")
+        force_update_client "$2"
         ;;
     "token")
         get_test_token "$2" "$3" "$4"

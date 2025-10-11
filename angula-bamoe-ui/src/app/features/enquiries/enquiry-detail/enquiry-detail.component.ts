@@ -14,8 +14,9 @@ import { Subject, takeUntil } from 'rxjs';
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { ProcessService } from '../../../core/services/process.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Enquiry, EnquiryStatus, Priority, Comment } from '../../../core/models/enquiry.model';
+import { Enquiry, EnquiryStatus, Comment } from '../../../core/models/enquiry.model';
 import { ProcessInstance, Task } from '../../../core/models/process.model';
+import { ProcessVisualizationComponent } from '../../../shared/components/process-visualization/process-visualization.component';
 
 @Component({
   selector: 'app-enquiry-detail',
@@ -29,7 +30,8 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatDividerModule,
-    MatListModule
+    MatListModule,
+    ProcessVisualizationComponent
   ],
   template: `
     <div class="enquiry-detail-container">
@@ -87,9 +89,6 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
                 <mat-chip [class]="getStatusClass(enquiry.status)">
                   {{ enquiry.status }}
                 </mat-chip>
-                <mat-chip [class]="getPriorityClass(enquiry.priority)" *ngIf="enquiry.priority">
-                  {{ enquiry.priority }}
-                </mat-chip>
                 <span class="enquiry-type">{{ enquiry.type }}</span>
               </mat-card-subtitle>
             </mat-card-header>
@@ -106,8 +105,8 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
                 <div class="meta-item">
                   <mat-icon>person</mat-icon>
                   <div>
-                    <strong>Created by:</strong>
-                    <span>{{ enquiry.createdBy?.name || 'Unknown' }}</span>
+                    <strong>Reported by:</strong>
+                    <span>{{ enquiry.reporter?.name || 'Unknown' }}</span>
                   </div>
                 </div>
                 <div class="meta-item">
@@ -135,37 +134,12 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
             </mat-card-content>
           </mat-card>
 
-          <!-- Process Information -->
-          <mat-card *ngIf="processInstance" class="process-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>account_tree</mat-icon>
-                Process Information
-              </mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="process-info">
-                <div class="process-item">
-                  <strong>Process ID:</strong>
-                  <span>{{ processInstance.id }}</span>
-                </div>
-                <div class="process-item">
-                  <strong>Status:</strong>
-                  <mat-chip [class]="getProcessStatusClass(processInstance.status)">
-                    {{ processInstance.status }}
-                  </mat-chip>
-                </div>
-                <div class="process-item">
-                  <strong>Started:</strong>
-                  <span>{{ processInstance.startDate | date:'medium' }}</span>
-                </div>
-                <div class="process-item" *ngIf="processInstance.endDate">
-                  <strong>Ended:</strong>
-                  <span>{{ processInstance.endDate | date:'medium' }}</span>
-                </div>
-              </div>
-            </mat-card-content>
-          </mat-card>
+          <!-- Process Visualization -->
+          <app-process-visualization 
+            *ngIf="processInstance" 
+            [processInstanceId]="processInstance.id"
+            [processInstance]="processInstance">
+          </app-process-visualization>
 
           <!-- Tasks -->
           <mat-card *ngIf="tasks.length > 0" class="tasks-card">
@@ -391,7 +365,7 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
       margin-bottom: 24px;
     }
 
-    /* Status and Priority Classes */
+    /* Status Classes */
     .status-open {
       background-color: #e3f2fd;
       color: #1976d2;
@@ -422,25 +396,6 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
       color: #d32f2f;
     }
 
-    .priority-low {
-      background-color: #e8f5e8;
-      color: #388e3c;
-    }
-
-    .priority-medium {
-      background-color: #fff3e0;
-      color: #f57c00;
-    }
-
-    .priority-high {
-      background-color: #ffebee;
-      color: #d32f2f;
-    }
-
-    .priority-critical {
-      background-color: #fce4ec;
-      color: #c2185b;
-    }
 
     .process-active {
       background-color: #e8f5e8;
@@ -481,6 +436,16 @@ import { ProcessInstance, Task } from '../../../core/models/process.model';
       background-color: #ffebee;
       color: #d32f2f;
     }
+
+    .process-unknown {
+      background-color: #f5f5f5;
+      color: #666;
+    }
+
+    .task-unknown {
+      background-color: #f5f5f5;
+      color: #666;
+    }
   `]
 })
 export class EnquiryDetailComponent implements OnInit, OnDestroy {
@@ -516,17 +481,40 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
 
   private loadEnquiry(id: string): void {
     this.loading = true;
+    // First try to get enquiry by ID (UUID)
     this.enquiryService.getEnquiryById(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (enquiry) => {
+          console.log('Enquiry received:', enquiry);
+          console.log('Reporter:', enquiry.reporter);
+          console.log('Reporter Name:', enquiry.reporter?.name);
+          console.log('Reporter ID:', enquiry.reporter?.id);
+          console.log('Reporter Email:', enquiry.reporter?.email);
+          
+          // Check if user information is properly populated
+          if (!enquiry.reporter?.name) {
+            console.warn('No reporter name found in enquiry:', enquiry);
+          }
           this.enquiry = enquiry;
           this.loadProcessInfo(id);
         },
         error: (error) => {
-          console.error('Error loading enquiry:', error);
-          this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
-          this.loading = false;
+          console.log('Enquiry not found by ID, trying process instance ID:', id);
+          // If not found by ID, try by process instance ID
+          this.enquiryService.getEnquiryByProcessInstanceId(id)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (enquiry) => {
+                this.enquiry = enquiry;
+                this.loadProcessInfo(id);
+              },
+              error: (processError) => {
+                console.error('Error loading enquiry:', processError);
+                this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
+                this.loading = false;
+              }
+            });
         }
       });
   }
@@ -553,7 +541,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (processes) => {
-            const process = processes.find(p => p.variables?.enquiryId === enquiryId);
+            const process = processes.find(p => p.variables?.['enquiryId'] === enquiryId);
             if (process) {
               this.processInstance = process;
               this.loadTasks(process.id);
@@ -595,16 +583,14 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     return `status-${status.toLowerCase().replace('_', '-')}`;
   }
 
-  getPriorityClass(priority?: Priority): string {
-    if (!priority) return '';
-    return `priority-${priority.toLowerCase()}`;
-  }
 
   getProcessStatusClass(status: string): string {
+    if (!status) return 'process-unknown';
     return `process-${status.toLowerCase()}`;
   }
 
   getTaskStatusClass(status: string): string {
+    if (!status) return 'task-unknown';
     return `task-${status.toLowerCase().replace('_', '-')}`;
   }
 

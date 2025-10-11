@@ -48,16 +48,25 @@ export class AuthService implements IAuthService {
   private getAuthConfigFromEnvironment(): AppAuthConfig {
     // Get configuration from environment
     const config = environment.auth;
-    return {
+    const baseConfig = {
       provider: config.provider,
       clientId: config.clientId,
       issuer: config.issuer,
-      realm: config.realm,
       scope: config.scope,
       showDebugInformation: config.showDebugInformation,
       useSilentRefresh: config.useSilentRefresh,
       silentRefreshRedirectUri: window.location.origin + '/assets/silent-refresh.html'
-    } as AppAuthConfig;
+    };
+
+    // Add realm property only for Keycloak provider
+    if (config.provider === AuthProvider.KEYCLOAK && 'realm' in config) {
+      return {
+        ...baseConfig,
+        realm: config.realm
+      } as AppAuthConfig;
+    }
+
+    return baseConfig as AppAuthConfig;
   }
 
   private mapToOAuthConfig(config: AppAuthConfig): AuthConfig {
@@ -115,7 +124,7 @@ export class AuthService implements IAuthService {
 
     this.oauthService.events
       .pipe(filter(e => e.type === 'token_error' || e.type === 'token_refresh_error'))
-      .subscribe((e: OAuthErrorEvent) => {
+      .subscribe((e: OAuthEvent) => {
         console.error('OAuth error:', e);
         this.authState$.next(false);
       });
@@ -124,6 +133,8 @@ export class AuthService implements IAuthService {
   private async loadUserInfo(): Promise<void> {
     try {
       const claims = this.oauthService.getIdentityClaims();
+      console.log('Raw claims from token:', claims);
+      
       if (claims) {
         const userInfo: UserInfo = {
           sub: claims['sub'],
@@ -137,7 +148,10 @@ export class AuthService implements IAuthService {
           groups: this.extractGroups(claims),
           ...claims
         };
+        console.log('Processed user info:', userInfo);
         this.userInfo$.next(userInfo);
+      } else {
+        console.log('No claims available from token');
       }
     } catch (error) {
       console.error('Failed to load user info:', error);
@@ -289,13 +303,25 @@ export class AuthService implements IAuthService {
 
   getCurrentUser(): User | null {
     const userInfo = this.userInfo$.value;
-    if (!userInfo) return null;
+    if (!userInfo) {
+      console.log('No user info available');
+      return null;
+    }
     
-    return {
+    console.log('User info from token:', userInfo);
+    console.log('User sub:', userInfo.sub);
+    console.log('User preferred_username:', userInfo.preferred_username);
+    console.log('User name:', userInfo.name);
+    console.log('User email:', userInfo.email);
+    
+    const user = {
       id: userInfo.sub || '',
-      name: userInfo.name || userInfo.preferred_username || '',
+      name: userInfo.preferred_username || userInfo.sub || 'Unknown User',
       email: userInfo.email || '',
       roles: userInfo.roles || []
     };
+    
+    console.log('Mapped user:', user);
+    return user;
   }
 }

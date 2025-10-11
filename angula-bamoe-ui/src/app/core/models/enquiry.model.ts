@@ -5,8 +5,9 @@ export interface Enquiry {
   description: string;
   type: EnquiryType;
   status: EnquiryStatus;
-  reporter?: User; // Maps to createdBy
+  reporter?: User; // The user who reported the enquiry
   assignee?: User; // Maps to assignedTo
+  assignedTo?: User; // Alternative name for assignee
   resolutionNotes?: string;
   comments?: Comment[];
   createdAt?: Date;
@@ -41,11 +42,4 @@ export enum EnquiryStatus {
   RESOLVED = 'RESOLVED',
   CLOSED = 'CLOSED',
   CANCELLED = 'CANCELLED'
-}
-
-export enum Priority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL'
 }

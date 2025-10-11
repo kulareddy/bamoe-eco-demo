@@ -89,7 +89,7 @@ interface DashboardStats {
       <div class="quick-actions">
         <h2>Quick Actions</h2>
         <div class="action-buttons">
-          <button mat-raised-button color="primary" routerLink="/enquiries/create">
+          <button mat-raised-button color="primary" routerLink="/enquiries/new">
             <mat-icon>add</mat-icon>
             Create Enquiry
           </button>
@@ -116,7 +116,7 @@ interface DashboardStats {
             <div *ngFor="let enquiry of recentEnquiries" class="enquiry-item">
               <div class="enquiry-info">
                 <div class="enquiry-title">{{ enquiry.title }}</div>
-                <div class="enquiry-meta">{{ enquiry.type }} • {{ enquiry.status }}</div>
+                <div class="enquiry-meta">{{ enquiry.type }} • {{ enquiry.status }} • Reported by: {{ enquiry.reporter?.name || 'user1' }}</div>
               </div>
               <button mat-icon-button [routerLink]="['/enquiries', enquiry.id]">
                 <mat-icon>arrow_forward</mat-icon>
@@ -266,15 +266,25 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadDashboardData(): void {
-    forkJoin({
-      allEnquiries: this.enquiryService.getEnquiries(),
-      myTasks: this.processService.getAllTasks({ assignee: this.authService.getUsername() }),
-      recentEnquiries: this.enquiryService.getEnquiries({ page: 0, size: 5, sort: 'createdAt,desc' })
-    }).subscribe({
-      next: (data) => {
-        this.calculateStats(data.allEnquiries, data.myTasks);
-        this.recentEnquiries = data.recentEnquiries;
-        this.loading = false;
+    // Load enquiries first, then try to load tasks (which may not be available)
+    this.enquiryService.getEnquiries().subscribe({
+      next: (allEnquiries) => {
+        console.log('Dashboard - All enquiries received:', allEnquiries);
+        console.log('Dashboard - First enquiry reporter:', allEnquiries[0]?.reporter);
+        this.recentEnquiries = allEnquiries.slice(0, 5); // Get recent 5 enquiries
+        
+        // Try to load tasks, but don't fail if the endpoint doesn't exist
+        this.processService.getAllTasks().subscribe({
+          next: (tasks) => {
+            this.calculateStats(allEnquiries, tasks);
+            this.loading = false;
+          },
+          error: (taskError) => {
+            console.warn('Tasks endpoint not available, using empty tasks array:', taskError);
+            this.calculateStats(allEnquiries, []);
+            this.loading = false;
+          }
+        });
       },
       error: (error) => {
         console.error('Error loading dashboard data:', error);

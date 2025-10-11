@@ -5,11 +5,11 @@
 cleanup:all
 
 # Clients - OAuth2/OIDC clients for applications
-# Format: client:clientId:clientSecret:description
-client:quarkus-bamoe-app:quarkus-bamoe-secret:Quarkus BAMOE Business Process Application
-client:quarkus-bamoe-frontend:public:Quarkus BAMOE Frontend Application
-public-client:bamoe-management-console:BAMOE Management Console
-client:spring-boot-api:spring-boot-secret:Spring Boot Application
+# Format: client|clientId|clientSecret|description|redirectUri (for public clients)
+client|quarkus-bamoe-app|quarkus-bamoe-secret|Quarkus BAMOE Business Process Application
+client|quarkus-bamoe-frontend|public|Quarkus BAMOE Frontend Application|http://localhost:4200/*
+public-client|bamoe-management-console|BAMOE Management Console|http://localhost:9280/*
+client|spring-boot-api|spring-boot-secret|Spring Boot Application
 
 # Roles
 role:admin

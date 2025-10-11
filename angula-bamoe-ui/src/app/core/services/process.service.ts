@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ProcessInstance, Task, TaskForm } from '../models/process.model';
-import { Enquiry } from '../models/enquiry.model';
+import { Enquiry, Comment } from '../models/enquiry.model';
 
 @Injectable({
   providedIn: 'root'
@@ -48,23 +48,34 @@ export class ProcessService {
     return this.http.get<Task[]>(`${this.apiUrl}/EnquiryProcess/${processId}/tasks`);
   }
 
-  getAllTasks(params?: any): Observable<Task[]> {
-    let httpParams = new HttpParams();
-    
-    if (params) {
-      Object.keys(params).forEach(key => {
-        const value = params[key];
-        if (value !== undefined && value !== null) {
-          httpParams = httpParams.set(key, value.toString());
-        }
-      });
-    }
-
-    return this.http.get<Task[]>(`${this.apiUrl}/tasks`, { params: httpParams });
+  getAllTasks(): Observable<Task[]> {
+    // Use usertasks API - token contains user and group info automatically
+    return this.http.get<Task[]>(`${this.apiUrl}/usertasks/instance`);
   }
 
   getTaskById(taskId: string): Observable<Task> {
-    return this.http.get<Task>(`${this.apiUrl}/tasks/${taskId}`);
+    return this.http.get<Task>(`${this.apiUrl}/usertasks/instance/${taskId}`);
+  }
+
+  // User Task Management - using usertasks API
+  getUserTaskById(taskId: string): Observable<Task> {
+    return this.http.get<Task>(`${this.apiUrl}/usertasks/instance/${taskId}`);
+  }
+
+  getUserTaskInputs(taskId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/usertasks/instance/${taskId}/inputs`);
+  }
+
+  getUserTaskOutputs(taskId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/usertasks/instance/${taskId}/outputs`);
+  }
+
+  getUserTaskComments(taskId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/usertasks/instance/${taskId}/comments`);
+  }
+
+  getUserTaskAttachments(taskId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/usertasks/instance/${taskId}/attachments`);
   }
 
   claimTask(taskId: string): Observable<Task> {
@@ -93,10 +104,32 @@ export class ProcessService {
   }
 
   getProcessSvg(processId: string): Observable<string> {
-    return this.http.get(`${this.apiUrl}/process/${processId}/image`, { responseType: 'text' });
+    return this.http.get(`${this.apiUrl}/svg/processes/EnquiryProcess/instances/${processId}`, { responseType: 'text' });
   }
 
   cancelProcessInstance(processId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/process/${processId}`);
   }
+
+  // Process Management - using correct OpenAPI endpoints
+  getProcessNodes(processId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/management/processes/EnquiryProcess/nodes`);
+  }
+
+  getProcessVariables(processId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}/nodeInstances`);
+  }
+
+  getProcessHistory(processId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}/nodeInstances`);
+  }
+
+  getProcessActivities(processId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/management/processes/EnquiryProcess/instances/${processId}/nodeInstances`);
+  }
+
+  getProcessImage(processId: string): Observable<string> {
+    return this.http.get(`${this.apiUrl}/svg/processes/EnquiryProcess/instances/${processId}`, { responseType: 'text' });
+  }
+
 }

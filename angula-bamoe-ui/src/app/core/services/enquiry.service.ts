@@ -2,13 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Enquiry, Comment } from '../models/enquiry.model';
+import { Enquiry, Comment, EnquiryStatus, User } from '../models/enquiry.model';
 
 export interface EnquirySearchParams {
   status?: string;
   type?: string;
   assignedTo?: string;
-  createdBy?: string;
   page?: number;
   size?: number;
   sort?: string;
@@ -23,8 +22,19 @@ export class EnquiryService {
   constructor(private http: HttpClient) {}
 
   // Read Operations - Spring Boot API
-  getEnquiries(): Observable<Enquiry[]> {
-    return this.http.get<Enquiry[]>(`${this.apiUrl}/enquiries`);
+  getEnquiries(params?: EnquirySearchParams): Observable<Enquiry[]> {
+    let httpParams = new HttpParams();
+    
+    if (params) {
+      if (params.status) httpParams = httpParams.set('status', params.status);
+      if (params.type) httpParams = httpParams.set('type', params.type);
+      if (params.assignedTo) httpParams = httpParams.set('assignedTo', params.assignedTo);
+      if (params.page !== undefined) httpParams = httpParams.set('page', params.page.toString());
+      if (params.size !== undefined) httpParams = httpParams.set('size', params.size.toString());
+      if (params.sort) httpParams = httpParams.set('sort', params.sort);
+    }
+    
+    return this.http.get<Enquiry[]>(`${this.apiUrl}/enquiries`, { params: httpParams });
   }
 
   getEnquiryById(id: string): Observable<Enquiry> {

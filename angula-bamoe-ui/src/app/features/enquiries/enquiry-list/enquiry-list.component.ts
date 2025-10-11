@@ -109,8 +109,8 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
           </ng-container>
 
           <ng-container matColumnDef="createdBy">
-            <th mat-header-cell *matHeaderCellDef>Created By</th>
-            <td mat-cell *matCellDef="let enquiry">{{ enquiry.createdBy?.name || 'Unknown' }}</td>
+            <th mat-header-cell *matHeaderCellDef>Reported By</th>
+            <td mat-cell *matCellDef="let enquiry">{{ enquiry.reporter?.name || 'Unknown' }}</td>
           </ng-container>
 
           <ng-container matColumnDef="createdAt">

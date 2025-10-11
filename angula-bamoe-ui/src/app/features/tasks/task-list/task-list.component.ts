@@ -198,9 +198,7 @@ export class TaskListComponent implements OnInit {
     this.loading = true;
     const username = this.authService.getUsername();
     
-    this.processService.getAllTasks({ 
-      assignee: username 
-    }).subscribe({
+    this.processService.getAllTasks().subscribe({
       next: (tasks) => {
         this.tasks = tasks;
         this.loading = false;

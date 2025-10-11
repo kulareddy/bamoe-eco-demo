@@ -15,7 +15,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { ProcessService } from '../../../core/services/process.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Enquiry, EnquiryType, Priority } from '../../../core/models/enquiry.model';
+import { Enquiry, EnquiryType } from '../../../core/models/enquiry.model';
 
 @Component({
   selector: 'app-enquiry-form',
@@ -88,14 +88,6 @@ import { Enquiry, EnquiryType, Priority } from '../../../core/models/enquiry.mod
                 </mat-error>
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Priority</mat-label>
-                <mat-select formControlName="priority">
-                  <mat-option *ngFor="let priority of priorities" [value]="priority">
-                    {{ priority }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
             </div>
 
             <div class="form-actions">
@@ -199,7 +191,6 @@ import { Enquiry, EnquiryType, Priority } from '../../../core/models/enquiry.mod
 export class EnquiryFormComponent implements OnInit, OnDestroy {
   enquiryForm: FormGroup;
   enquiryTypes = Object.values(EnquiryType);
-  priorities = Object.values(Priority);
   isEditMode = false;
   submitting = false;
   enquiryId?: string;
@@ -238,8 +229,7 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
     return this.fb.group({
       title: ['', [Validators.required, Validators.minLength(3)]],
       description: ['', [Validators.required, Validators.minLength(10)]],
-      type: ['', Validators.required],
-      priority: [Priority.MEDIUM]
+      type: ['', Validators.required]
     });
   }
 
@@ -252,8 +242,7 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
             this.enquiryForm.patchValue({
               title: enquiry.title,
               description: enquiry.description,
-              type: enquiry.type,
-              priority: enquiry.priority || Priority.MEDIUM
+              type: enquiry.type
             });
           },
           error: (error) => {
@@ -273,8 +262,7 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
       const enquiryData: Partial<Enquiry> = {
         title: formValue.title,
         description: formValue.description,
-        type: formValue.type,
-        priority: formValue.priority
+        type: formValue.type
       };
 
       if (this.isEditMode && this.enquiryId) {
@@ -294,11 +282,35 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Map current user to backend User format (only name and email)
+    const reporterUser = {
+      name: currentUser.name,
+      email: currentUser.email
+    };
+    
+    console.log('Current user from token:', currentUser);
+    console.log('Reporter user being sent:', reporterUser);
+
     // Add current user as reporter
     const enquiryWithUser = {
       ...enquiryData,
-      reporter: currentUser
+      reporter: reporterUser
     };
+    
+    console.log('Creating enquiry with user:', currentUser);
+    console.log('Mapped reporter user:', reporterUser);
+    console.log('User Name:', currentUser.name);
+    console.log('User Email:', currentUser.email);
+    console.log('User ID:', currentUser.id);
+    console.log('Enquiry data:', enquiryWithUser);
+    
+    // Validate that we have the required user information
+    if (!currentUser.name || currentUser.name === 'Unknown User') {
+      console.warn('User name is missing or unknown:', currentUser.name);
+    }
+    if (!currentUser.email) {
+      console.warn('User email is missing:', currentUser.email);
+    }
 
     // Create enquiry through BAMOE process (handles both enquiry creation and process initiation)
     this.processService.createEnquiry(enquiryWithUser)
@@ -307,9 +319,8 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
         next: (processInstance) => {
           this.snackBar.open('Enquiry created successfully!', 'Close', { duration: 3000 });
           // The process instance ID is the glue between Spring Boot and BAMOE
-          // Navigate to enquiry detail - the enquiry will be fetched from Spring Boot
-          // using the enquiry ID that should be stored in the process variables
-          this.router.navigate(['/enquiries', processInstance.variables?.enquiryId || processInstance.id]);
+          // Navigate to enquiry detail - use process instance ID to fetch enquiry
+          this.router.navigate(['/enquiries', processInstance.id]);
         },
         error: (error) => {
           console.error('Error creating enquiry:', error);
