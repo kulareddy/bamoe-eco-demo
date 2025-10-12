@@ -57,6 +57,29 @@ interface ProcessNode {
     MatSnackBarModule,
     FormsModule
   ],
+  styles: [`
+    .activity-assignment {
+      margin-top: 8px;
+      font-size: 0.875rem;
+    }
+    
+    .assignment-info {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #666;
+    }
+    
+    .assignment-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+    
+    .assignment-text {
+      font-size: 0.8rem;
+    }
+  `],
   template: `
     <div class="process-visualization">
       <mat-card>
@@ -95,6 +118,17 @@ interface ProcessNode {
                       <div class="activity-details">
                         <div class="activity-name">{{ activity.name }}</div>
                         <div class="activity-status">{{ activity.status }}</div>
+                        <!-- Show group/user info for Task Support activities -->
+                        <div *ngIf="isTaskSupportActivity(activity)" class="activity-assignment">
+                          <span *ngIf="activity.status === 'Ready'" class="assignment-info">
+                            <mat-icon class="assignment-icon">group</mat-icon>
+                            <span class="assignment-text">Available to: Tech Support Group</span>
+                          </span>
+                          <span *ngIf="activity.status === 'Reserved' && activity.assignee" class="assignment-info">
+                            <mat-icon class="assignment-icon">person</mat-icon>
+                            <span class="assignment-text">Assigned to: {{ activity.assignee }}</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -291,12 +325,12 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
             this.safeProcessSvg = this.sanitizer.bypassSecurityTrustHtml(this.processSvg);
           }
           
-          // Process activities - with null check and date conversion
-          this.activities = data?.activities?.map(activity => ({
+          // Process activities - with null check and date conversion, filtered to exclude unwanted types
+          this.activities = this.filterActivities(data?.activities?.map(activity => ({
             ...activity,
             startTime: activity.startTime ? new Date(activity.startTime) : undefined,
             endTime: activity.endTime ? new Date(activity.endTime) : undefined
-          })) || [];
+          })) || []);
           
           // Process history - with null check and date conversion
           this.processHistory = data?.history?.map(historyItem => ({
@@ -355,7 +389,7 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
           if (data.svg) {
             this.safeProcessSvg = this.sanitizer.bypassSecurityTrustHtml(data.svg);
           }
-          this.activities = data.activities;
+          this.activities = this.filterActivities(data.activities);
           this.processHistory = data.history;
           
           // Use variables from process info API call
@@ -380,12 +414,50 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
     if (!activity.type) return 'help_outline';
     
     const type = activity.type.toLowerCase();
+    const name = activity.name?.toLowerCase() || '';
+    
+    // Print Exit Task - use trace icon
+    if (name.includes('print exit task') || name.includes('print exit')) {
+      return 'track_changes';
+    }
+    
+    // Service Enquiry Reopen - use same icon as Service Task Create Enquiry
+    if (name.includes('service enquiry reopen') || name.includes('enquiry reopen')) {
+      return 'settings_applications';
+    }
+    
+    // Service tasks - use system/settings icon
+    if (type.includes('service') || type.includes('servicetask') || name.includes('service task')) {
+      return 'settings_applications';
+    }
+    
+    // User tasks - use assignment icon
+    if (type.includes('usertask') || type.includes('humantask') || type.includes('task') && !name.includes('service')) {
+      return 'assignment';
+    }
+    
+    // Business rule tasks - use rule icon
+    if (type.includes('businessrule') || type.includes('ruleset') || name.includes('validate')) {
+      return 'rule';
+    }
+    
+    // Script tasks - use code icon
+    if (type.includes('script') || name.includes('script')) {
+      return 'code';
+    }
+    
+    // Start events
     if (type.includes('start')) return 'play_arrow';
+    
+    // End events
     if (type.includes('end')) return 'stop';
-    if (type.includes('task')) return 'assignment';
+    
+    // Gateways
     if (type.includes('gateway')) return 'call_split';
+    
+    // Events
     if (type.includes('event')) return 'event';
-    if (type.includes('service')) return 'build';
+    
     return 'help_outline';
   }
 
@@ -397,6 +469,54 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
     if (status.includes('active') || status.includes('running')) return 'active';
     if (status.includes('error') || status.includes('failed')) return 'error';
     return 'status-unknown';
+  }
+
+  /**
+   * Filter out unwanted activity types from the activities list
+   * Ignores: start events, end events, link events, end signal events, milestones, sub process activities, and CE signals
+   * Keeps: Service activities (Service Task Create Enquiry, Service Enquiry Reopen, etc.)
+   */
+  private filterActivities(activities: ProcessActivity[]): ProcessActivity[] {
+    if (!activities || activities.length === 0) return [];
+    
+    return activities.filter(activity => {
+      if (!activity.type) return true; // Keep activities without type info
+      
+      const type = activity.type.toLowerCase();
+      const name = activity.name?.toLowerCase() || '';
+      
+      // Keep Service activities
+      if (name.includes('service') || type.includes('service')) return true;
+      
+      // Filter out unwanted activity types
+      if (type.includes('start') || type.includes('startevent')) return false;
+      if (type.includes('end') || type.includes('endevent')) return false;
+      if (type.includes('link')) return false;
+      if (type.includes('signal') && (type.includes('end') || name.includes('end'))) return false;
+      if (type.includes('milestone')) return false;
+      
+      // Filter out anything that starts with "Sub" (but keep Service activities)
+      if (name.startsWith('sub') && !name.includes('service')) return false;
+      
+      // Filter out CE (signal) but keep Service activities
+      if ((name.includes('ce') || type.includes('ce')) && !name.includes('service')) return false;
+      
+      // Filter out activities with names "Tasks" or "TaskSupport" (section titles)
+      if (name === 'tasks' || name === 'tasksupport') return false;
+      
+      // Filter out activities with "Split" in the name
+      if (name.includes('split')) return false;
+      
+      return true;
+    });
+  }
+
+  /**
+   * Check if an activity is a Task Support activity
+   */
+  isTaskSupportActivity(activity: ProcessActivity): boolean {
+    const name = activity.name?.toLowerCase() || '';
+    return name.includes('task support') || name.includes('tasksupport');
   }
 
   getHistoryIcon(historyItem: any): string {
@@ -453,9 +573,10 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       comment: this.newComment.trim(),
       commentedBy: {
         name: currentUser.name,    // From token: user1
-        email: currentUser.email   // From token: user1@example.com
-      },
-      commentedAt: new Date()
+        email: currentUser.email,  // From token: user1@example.com
+        userId: currentUser.id || currentUser.userId
+      }
+      // commentedAt will be set by the backend
     };
 
     this.processService.addProcessComment(this.processInstanceId, comment)

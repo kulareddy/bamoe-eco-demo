@@ -217,7 +217,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   private redirectAfterLogin(): void {
-    const redirectUrl = localStorage.getItem('redirectUrl') || '/home';
+    const redirectUrl = localStorage.getItem('redirectUrl') || '/dashboard';
     localStorage.removeItem('redirectUrl');
     this.router.navigate([redirectUrl]);
   }

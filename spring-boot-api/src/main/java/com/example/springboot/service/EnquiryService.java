@@ -6,6 +6,7 @@ import com.example.springboot.model.EnquiryStatus;
 import com.example.springboot.model.User;
 import com.example.springboot.repository.CommentRepository;
 import com.example.springboot.repository.EnquiryRepository;
+import com.example.springboot.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +28,31 @@ public class EnquiryService {
     @Autowired
     private CommentRepository commentRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     // Basic CRUD
     public Enquiry create(Enquiry enquiry) {
+        // Ensure reporter User exists in database
+        if (enquiry.getReporter() != null) {
+            User reporter = getOrCreateUser(
+                enquiry.getReporter().getUserId(),
+                enquiry.getReporter().getName(),
+                enquiry.getReporter().getEmail()
+            );
+            enquiry.setReporter(reporter);
+        }
+        
+        // Ensure assignee User exists in database (if provided)
+        if (enquiry.getAssignee() != null) {
+            User assignee = getOrCreateUser(
+                enquiry.getAssignee().getUserId(),
+                enquiry.getAssignee().getName(),
+                enquiry.getAssignee().getEmail()
+            );
+            enquiry.setAssignee(assignee);
+        }
+        
         return repository.save(enquiry);
     }
 
@@ -54,8 +78,27 @@ public class EnquiryService {
                     existing.setDescription(enquiry.getDescription());
                     existing.setType(enquiry.getType());
                     existing.setStatus(enquiry.getStatus());
-                    existing.setReporter(enquiry.getReporter());
-                    existing.setAssignee(enquiry.getAssignee());
+                    
+                    // Ensure reporter User exists in database (if provided)
+                    if (enquiry.getReporter() != null) {
+                        User reporter = getOrCreateUser(
+                            enquiry.getReporter().getUserId(),
+                            enquiry.getReporter().getName(),
+                            enquiry.getReporter().getEmail()
+                        );
+                        existing.setReporter(reporter);
+                    }
+                    
+                    // Ensure assignee User exists in database (if provided)
+                    if (enquiry.getAssignee() != null) {
+                        User assignee = getOrCreateUser(
+                            enquiry.getAssignee().getUserId(),
+                            enquiry.getAssignee().getName(),
+                            enquiry.getAssignee().getEmail()
+                        );
+                        existing.setAssignee(assignee);
+                    }
+                    
                     existing.setResolutionNotes(enquiry.getResolutionNotes());
                     existing.setResolvedAt(enquiry.getResolvedAt());
                     return repository.save(existing);
@@ -86,7 +129,13 @@ public class EnquiryService {
     public Optional<Enquiry> assign(UUID id, User assignee) {
         return repository.findById(id)
                 .map(enquiry -> {
-                    enquiry.assignTo(assignee);
+                    // Ensure assignee User exists in database
+                    User persistedAssignee = getOrCreateUser(
+                        assignee.getUserId(),
+                        assignee.getName(),
+                        assignee.getEmail()
+                    );
+                    enquiry.assignTo(persistedAssignee);
                     return repository.save(enquiry);
                 });
     }
@@ -112,7 +161,13 @@ public class EnquiryService {
     public Optional<Comment> addComment(UUID enquiryId, String commentText, User commentedBy) {
         return repository.findById(enquiryId)
                 .map(enquiry -> {
-                    Comment comment = new Comment(commentText, commentedBy, enquiry);
+                    // Ensure commentedBy User exists in database
+                    User persistedUser = getOrCreateUser(
+                        commentedBy.getUserId(),
+                        commentedBy.getName(),
+                        commentedBy.getEmail()
+                    );
+                    Comment comment = new Comment(commentText, persistedUser, enquiry);
                     enquiry.addComment(comment);
                     return commentRepository.save(comment);
                 });
@@ -135,6 +190,23 @@ public class EnquiryService {
                     comment.setComment(newCommentText);
                     return commentRepository.save(comment);
                 });
+    }
+
+    // Helper methods for User management
+    public User getOrCreateUser(String userId, String name, String email) {
+        return userRepository.findById(userId)
+                .orElseGet(() -> {
+                    User newUser = new User(userId, name, email);
+                    return userRepository.save(newUser);
+                });
+    }
+
+    public Optional<User> findUserById(String userId) {
+        return userRepository.findById(userId);
+    }
+
+    public Optional<User> findUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
 }

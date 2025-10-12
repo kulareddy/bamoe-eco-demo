@@ -80,38 +80,34 @@ import { Task } from '../../../core/models/process.model';
                 Claim Task
               </button>
               
-              <!-- Reserved State: Show Start button -->
-              <button mat-raised-button 
-                      color="accent"
-                      (click)="startTask()" 
-                      *ngIf="isTaskReserved()"
-                      [disabled]="submitting"
-                      title="Start working on this task">
-                <mat-icon>play_arrow</mat-icon>
-                Start Task
-              </button>
-              
-              <!-- In Progress State: Show Complete button -->
-              <button mat-raised-button 
-                      color="primary"
-                      (click)="completeTask()" 
-                      *ngIf="isTaskInProgress()"
-                      [disabled]="submitting"
-                      title="Complete this task">
-                <mat-icon>check_circle</mat-icon>
-                Complete Task
-              </button>
-              
-              <!-- Release button for reserved/in-progress tasks -->
-              <button mat-button 
-                      color="warn"
-                      (click)="releaseTask()" 
-                      *ngIf="canRelease()"
-                      [disabled]="submitting"
-                      title="Release this task">
-                <mat-icon>assignment_return</mat-icon>
-                Release Task
-              </button>
+              <!-- Reserved/In Progress State: Show Complete, Release, and Cancel buttons -->
+              <div *ngIf="isTaskReserved() || isTaskInProgress()" class="task-action-row">
+                <button mat-raised-button 
+                        color="primary"
+                        (click)="completeTask()" 
+                        [disabled]="submitting"
+                        title="Complete this task">
+                  <mat-icon>check_circle</mat-icon>
+                  Complete Task
+                </button>
+                
+                <button mat-button 
+                        color="warn"
+                        (click)="releaseTask()" 
+                        [disabled]="submitting"
+                        title="Release this task">
+                  <mat-icon>assignment_return</mat-icon>
+                  Release Task
+                </button>
+                
+                <button mat-button 
+                        (click)="goBack()"
+                        [disabled]="submitting"
+                        title="Cancel and go back">
+                  <mat-icon>arrow_back</mat-icon>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
 
@@ -139,22 +135,6 @@ import { Task } from '../../../core/models/process.model';
               </mat-select>
             </mat-form-field>
 
-            <div class="form-actions">
-              <button mat-raised-button 
-                      color="primary" 
-                      type="submit" 
-                      [disabled]="taskForm.invalid || submitting">
-                <mat-icon>check_circle</mat-icon>
-                Complete Task
-              </button>
-              
-              <button mat-button 
-                      type="button" 
-                      (click)="goBack()"
-                      [disabled]="submitting">
-                Cancel
-              </button>
-            </div>
           </form>
         </mat-card-content>
       </mat-card>
@@ -265,6 +245,16 @@ import { Task } from '../../../core/models/process.model';
       margin-right: 8px;
       font-size: 18px;
     }
+
+    .task-action-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .task-action-row button:last-child {
+      margin-left: auto;
+    }
   `]
 })
 export class TaskWorkComponent implements OnInit {
@@ -304,8 +294,9 @@ export class TaskWorkComponent implements OnInit {
         if (task.processInstanceId && task.externalReferenceId) {
           this.processService.getProcessTask(task.processInstanceId, task.externalReferenceId).subscribe({
             next: (processTask) => {
-              // Merge process task data with existing task data
-              this.task = { ...this.task, ...processTask };
+              // Merge process task data with existing task data, but preserve the original task ID
+              const originalTaskId = this.task!.id;
+              this.task = { ...this.task, ...processTask, id: originalTaskId };
               this.loading = false;
             },
             error: (error) => {
@@ -334,33 +325,18 @@ export class TaskWorkComponent implements OnInit {
         enquiryStatus: this.taskForm.value.enquiryStatus
       };
 
-      // Use process-specific endpoint if we have process instance ID and external reference ID
-      if (this.task.processInstanceId && this.task.externalReferenceId) {
-        this.processService.completeProcessTask(this.task.processInstanceId, this.task.externalReferenceId, formData).subscribe({
-          next: () => {
-            this.snackBar.open('Task completed successfully', 'Close', { duration: 3000 });
-            this.router.navigate(['/tasks']);
-          },
-          error: (error) => {
-            console.error('Error completing task:', error);
-            this.snackBar.open('Error completing task', 'Close', { duration: 3000 });
-            this.submitting = false;
-          }
-        });
-      } else {
-        // Fallback to generic usertasks endpoint
-        this.processService.completeTask(this.task.id, formData).subscribe({
-          next: () => {
-            this.snackBar.open('Task completed successfully', 'Close', { duration: 3000 });
-            this.router.navigate(['/tasks']);
-          },
-          error: (error) => {
-            console.error('Error completing task:', error);
-            this.snackBar.open('Error completing task', 'Close', { duration: 3000 });
-            this.submitting = false;
-          }
-        });
-      }
+      // Use the task ID directly for completing tasks
+      this.processService.completeTask(this.task.id, formData).subscribe({
+        next: () => {
+          this.snackBar.open('Task completed successfully', 'Close', { duration: 3000 });
+          this.router.navigate(['/tasks']);
+        },
+        error: (error) => {
+          console.error('Error completing task:', error);
+          this.snackBar.open('Error completing task', 'Close', { duration: 3000 });
+          this.submitting = false;
+        }
+      });
     }
   }
 
@@ -389,58 +365,35 @@ export class TaskWorkComponent implements OnInit {
   // Task Action Methods
   claimTask(): void {
     this.submitting = true;
-    if (this.task?.processInstanceId && this.task?.externalReferenceId) {
-      // Use process-specific endpoint for claiming tasks
-      this.processService.claimProcessTask(this.task.processInstanceId, this.task.externalReferenceId).subscribe({
-        next: () => {
-          this.snackBar.open('Task claimed successfully', 'Close', { duration: 3000 });
-          this.loadTask(this.task!.id);
-          this.submitting = false;
-        },
-        error: (error) => {
-          console.error('Error claiming task:', error);
-          this.snackBar.open('Error claiming task', 'Close', { duration: 3000 });
-          this.submitting = false;
-        }
-      });
-    } else {
-      // Fallback to generic usertasks endpoint
-      this.processService.claimTask(this.task!.id).subscribe({
-        next: () => {
-          this.snackBar.open('Task claimed successfully', 'Close', { duration: 3000 });
-          this.loadTask(this.task!.id);
-          this.submitting = false;
-        },
-        error: (error) => {
-          console.error('Error claiming task:', error);
-          this.snackBar.open('Error claiming task', 'Close', { duration: 3000 });
-          this.submitting = false;
-        }
-      });
-    }
-  }
-
-  startTask(): void {
-    this.submitting = true;
-    // Start task is essentially the same as claiming for reserved tasks
+    // Use the task ID directly for claiming
     this.processService.claimTask(this.task!.id).subscribe({
       next: () => {
-        this.snackBar.open('Task started successfully', 'Close', { duration: 3000 });
+        this.snackBar.open('Task claimed successfully', 'Close', { duration: 3000 });
         this.loadTask(this.task!.id);
         this.submitting = false;
       },
       error: (error) => {
-        console.error('Error starting task:', error);
-        this.snackBar.open('Error starting task', 'Close', { duration: 3000 });
+        console.error('Error claiming task:', error);
+        this.handleTaskClaimError(error);
         this.submitting = false;
       }
     });
   }
 
+  private handleTaskClaimError(error: any): void {
+    if (error.status === 404) {
+      this.snackBar.open('Task not found. It may have been completed or cancelled.', 'Close', { duration: 5000 });
+      // Redirect back to task list
+      this.router.navigate(['/tasks']);
+    } else {
+      this.snackBar.open('Error claiming task', 'Close', { duration: 3000 });
+    }
+  }
+
+
   completeTask(): void {
-    // This will show the form for completion
-    this.taskForm.get('resolutionNotes')?.setValue('');
-    this.taskForm.get('enquiryStatus')?.setValue('RESOLVED');
+    // Submit the task with current form data
+    this.submitTask();
   }
 
   releaseTask(): void {

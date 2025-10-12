@@ -85,16 +85,6 @@ import { Task } from '../../../core/models/process.model';
                 Claim Task
               </button>
               
-              <!-- Reserved State: Show Work on Task button -->
-              <button mat-raised-button 
-                      color="accent"
-                      (click)="workOnTask(task)" 
-                      *ngIf="isTaskReserved(task)"
-                      title="Work on Task">
-                <mat-icon>edit</mat-icon>
-                Work on Task
-              </button>
-              
               <!-- In Progress State: Show Complete button -->
               <button mat-raised-button 
                       color="primary"
@@ -260,6 +250,7 @@ export class TaskListComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error claiming task:', error);
+          this.handleTaskClaimError(error, task);
         }
       });
     } else {
@@ -270,8 +261,19 @@ export class TaskListComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error claiming task:', error);
+          this.handleTaskClaimError(error, task);
         }
       });
+    }
+  }
+
+  private handleTaskClaimError(error: any, task: Task): void {
+    if (error.status === 404) {
+      console.warn(`Task ${task.id} not found. It may have been completed or cancelled.`);
+      // Refresh the task list to remove the non-existent task
+      this.loadTasks();
+    } else {
+      console.error('Error claiming task:', error);
     }
   }
 
@@ -334,10 +336,6 @@ export class TaskListComponent implements OnInit {
   }
 
   // Task Action Methods
-  workOnTask(task: Task): void {
-    // Navigate to task form/work page
-    this.router.navigate(['/tasks', task.id, 'work']);
-  }
 
   completeTask(task: Task): void {
     // Use process-specific endpoint for TaskSupport tasks

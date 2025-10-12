@@ -1,5 +1,6 @@
 package com.example.springboot.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -29,17 +30,15 @@ public class Comment {
     private String comment;
 
     @NotNull(message = "Comment author is required")
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "name", column = @Column(name = "commented_by_name", nullable = false)),
-        @AttributeOverride(name = "email", column = @Column(name = "commented_by_email", nullable = false))
-    })
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "commented_by_user_id", nullable = false)
     private User commentedBy;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime commentedAt;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enquiry_id", nullable = false)
     private Enquiry enquiry;

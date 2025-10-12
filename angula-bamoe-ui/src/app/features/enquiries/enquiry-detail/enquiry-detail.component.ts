@@ -9,7 +9,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
+import { Inject } from '@angular/core';
 
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { ProcessService } from '../../../core/services/process.service';
@@ -17,6 +22,65 @@ import { AuthService } from '../../../core/services/auth.service';
 import { Enquiry, EnquiryStatus } from '../../../core/models/enquiry.model';
 import { ProcessInstance, Task } from '../../../core/models/process.model';
 import { ProcessVisualizationComponent } from '../../../shared/components/process-visualization/process-visualization.component';
+
+// Notes Dialog Component
+@Component({
+  selector: 'app-notes-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    FormsModule
+  ],
+  template: `
+    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <mat-dialog-content>
+      <p>{{ data.message }}</p>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Notes</mat-label>
+        <textarea 
+          matInput 
+          [(ngModel)]="notes" 
+          [placeholder]="data.placeholder"
+          rows="4"
+          maxlength="1000"
+          [required]="data.required">
+        </textarea>
+        <mat-hint>{{ notes.length }}/1000 characters</mat-hint>
+      </mat-form-field>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button 
+        mat-raised-button 
+        color="primary" 
+        [disabled]="data.required && !notes.trim()"
+        (click)="onConfirm()">
+        Confirm
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    .full-width {
+      width: 100%;
+    }
+  `]
+})
+export class NotesDialogComponent {
+  notes = '';
+
+  constructor(
+    public dialogRef: MatDialogRef<NotesDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {}
+
+  onConfirm(): void {
+    this.dialogRef.close(this.notes.trim());
+  }
+}
 
 @Component({
   selector: 'app-enquiry-detail',
@@ -31,6 +95,10 @@ import { ProcessVisualizationComponent } from '../../../shared/components/proces
     MatSnackBarModule,
     MatDividerModule,
     MatListModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    FormsModule,
     ProcessVisualizationComponent
   ],
   template: `
@@ -47,10 +115,6 @@ import { ProcessVisualizationComponent } from '../../../shared/components/proces
             <button mat-button (click)="goBack()">
               <mat-icon>arrow_back</mat-icon>
               Back
-            </button>
-            <button mat-raised-button color="primary" (click)="editEnquiry()">
-              <mat-icon>edit</mat-icon>
-              Edit
             </button>
             
             <!-- State Management Actions -->
@@ -406,7 +470,8 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     private enquiryService: EnquiryService,
     private processService: ProcessService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -518,11 +583,6 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/enquiries']);
   }
 
-  editEnquiry(): void {
-    if (this.enquiry?.id) {
-      this.router.navigate(['/enquiries', this.enquiry.id, 'edit']);
-    }
-  }
 
   getStatusClass(status: EnquiryStatus): string {
     return `status-${status.toLowerCase().replace('_', '-')}`;
@@ -541,57 +601,99 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
 
   // State Management Operations (via BAMOE Process Service)
   cancelEnquiry(): void {
-    const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
-    if (processId) {
-      this.processService.cancelEnquiry(processId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.snackBar.open('Enquiry cancelled successfully!', 'Close', { duration: 3000 });
-            this.loadEnquiry(this.enquiry!.id!);
-          },
-          error: (error) => {
-            console.error('Error cancelling enquiry:', error);
-            this.snackBar.open('Error cancelling enquiry', 'Close', { duration: 3000 });
-          }
-        });
-    }
+    const dialogRef = this.dialog.open(NotesDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Cancel Enquiry',
+        message: 'Please provide a reason for cancelling this enquiry:',
+        placeholder: 'Enter cancellation reason...',
+        required: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
+        if (processId) {
+          this.processService.cancelEnquiry(processId, result)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => {
+                this.snackBar.open('Enquiry cancelled successfully!', 'Close', { duration: 3000 });
+                this.loadEnquiry(this.enquiry!.id!);
+              },
+              error: (error) => {
+                console.error('Error cancelling enquiry:', error);
+                this.snackBar.open('Error cancelling enquiry', 'Close', { duration: 3000 });
+              }
+            });
+        }
+      }
+    });
   }
 
   reopenEnquiry(): void {
-    const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
-    if (processId) {
-      this.processService.reopenEnquiry(processId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.snackBar.open('Enquiry reopened successfully!', 'Close', { duration: 3000 });
-            this.loadEnquiry(this.enquiry!.id!);
-          },
-          error: (error) => {
-            console.error('Error reopening enquiry:', error);
-            this.snackBar.open('Error reopening enquiry', 'Close', { duration: 3000 });
-          }
-        });
-    }
+    const dialogRef = this.dialog.open(NotesDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Reopen Enquiry',
+        message: 'Please provide a reason for reopening this enquiry:',
+        placeholder: 'Enter reopening reason...',
+        required: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
+        if (processId) {
+          this.processService.reopenEnquiry(processId, result)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => {
+                this.snackBar.open('Enquiry reopened successfully!', 'Close', { duration: 3000 });
+                this.loadEnquiry(this.enquiry!.id!);
+              },
+              error: (error) => {
+                console.error('Error reopening enquiry:', error);
+                this.snackBar.open('Error reopening enquiry', 'Close', { duration: 3000 });
+              }
+            });
+        }
+      }
+    });
   }
 
   closeEnquiry(): void {
-    const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
-    if (processId) {
-      this.processService.closeEnquiry(processId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.snackBar.open('Enquiry closed successfully!', 'Close', { duration: 3000 });
-            this.loadEnquiry(this.enquiry!.id!);
-          },
-          error: (error) => {
-            console.error('Error closing enquiry:', error);
-            this.snackBar.open('Error closing enquiry', 'Close', { duration: 3000 });
-          }
-        });
-    }
+    const dialogRef = this.dialog.open(NotesDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Close Enquiry',
+        message: 'Please provide closure notes for this enquiry:',
+        placeholder: 'Enter closure notes...',
+        required: true
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const processId = this.enquiry?.processInstanceId || this.processInstance?.id;
+        if (processId) {
+          this.processService.closeEnquiry(processId, result)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => {
+                this.snackBar.open('Enquiry closed successfully!', 'Close', { duration: 3000 });
+                this.loadEnquiry(this.enquiry!.id!);
+              },
+              error: (error) => {
+                console.error('Error closing enquiry:', error);
+                this.snackBar.open('Error closing enquiry', 'Close', { duration: 3000 });
+              }
+            });
+        }
+      }
+    });
   }
 
   canCancelEnquiry(): boolean {

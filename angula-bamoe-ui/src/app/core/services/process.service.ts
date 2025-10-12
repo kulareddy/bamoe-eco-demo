@@ -33,16 +33,19 @@ export class ProcessService {
     return this.http.post(`${this.apiUrl}/EnquiryProcess/${processId}/comment`, comment);
   }
 
-  cancelEnquiry(processId: string): Observable<ProcessInstance> {
-    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/cancel`, {});
+  cancelEnquiry(processId: string, notes?: string): Observable<ProcessInstance> {
+    const payload = notes ? { notes } : {};
+    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/cancel`, payload);
   }
 
-  reopenEnquiry(processId: string): Observable<ProcessInstance> {
-    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/reopen`, {});
+  reopenEnquiry(processId: string, notes?: string): Observable<ProcessInstance> {
+    const payload = notes ? { notes } : {};
+    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/reopen`, payload);
   }
 
-  closeEnquiry(processId: string): Observable<ProcessInstance> {
-    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/close`, {});
+  closeEnquiry(processId: string, notes?: string): Observable<ProcessInstance> {
+    const payload = notes ? { notes } : {};
+    return this.http.post<ProcessInstance>(`${this.apiUrl}/EnquiryProcess/${processId}/close`, payload);
   }
 
   // Task Management
@@ -237,17 +240,28 @@ export class ProcessService {
   }
 
   addProcessComment(processInstanceId: string, comment: Comment): Observable<Comment> {
-    // Add comment using BAMOE process endpoint with Note object
-    const noteData = {
-      comment: comment.comment,
-      commentedBy: comment.commentedBy,
-      commentedAt: comment.commentedAt
+    // Send comment to BAMOE process - signal expects property named "comment"
+    const signalData = {
+      comment: {
+        comment: comment.comment,
+        commentedBy: comment.commentedBy
+        // commentedAt is optional - backend will set it if not provided
+      }
     };
 
-    return this.http.post<Comment>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, noteData)
+    console.log('Sending comment signal data to BAMOE:', signalData);
+    console.log('Endpoint:', `${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`);
+
+    // Send signal with comment property containing Note object
+    return this.http.post<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, signalData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
       .pipe(
         catchError(error => {
           console.error('Error adding process comment:', error);
+          console.error('Error details:', error.error);
           throw error;
         })
       );

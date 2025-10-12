@@ -11,6 +11,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterModule } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquiry.model';
@@ -274,6 +275,7 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
 })
 export class EnquiryListComponent implements OnInit {
   enquiries: Enquiry[] = [];
+  baseEnquiries: Enquiry[] = []; // Store the base filtered results
   loading = true;
   displayedColumns = ['title', 'type', 'status', 'createdBy', 'createdAt', 'actions'];
 
@@ -290,12 +292,21 @@ export class EnquiryListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEnquiries();
+    
+    // Set up real-time search with debouncing
+    this.filterForm.get('search')?.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.applySearch();
+    });
   }
 
   loadEnquiries(): void {
     this.loading = true;
     this.enquiryService.getEnquiries().subscribe({
       next: (enquiries) => {
+        this.baseEnquiries = enquiries;
         this.enquiries = enquiries;
         this.loading = false;
       },
@@ -315,25 +326,36 @@ export class EnquiryListComponent implements OnInit {
       type: filters.type?.join(',')
     }).subscribe({
       next: (enquiries) => {
-        let filteredEnquiries = enquiries;
-        
-        // Apply search filter locally
-        if (filters.search) {
-          const searchTerm = filters.search.toLowerCase();
-          filteredEnquiries = enquiries.filter(e => 
-            e.title.toLowerCase().includes(searchTerm) ||
-            e.description.toLowerCase().includes(searchTerm)
-          );
-        }
-        
-        this.enquiries = filteredEnquiries;
+        this.baseEnquiries = enquiries;
+        this.enquiries = enquiries;
         this.loading = false;
+        // Apply search to the filtered results
+        this.applySearch();
       },
       error: (error) => {
         console.error('Error applying filters:', error);
         this.loading = false;
       }
     });
+  }
+
+  applySearch(): void {
+    const searchTerm = this.filterForm.get('search')?.value;
+    
+    // Always start from base enquiries
+    this.enquiries = [...this.baseEnquiries];
+    
+    if (!searchTerm || !searchTerm.trim()) {
+      return; // No search term, show all base results
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    this.enquiries = this.enquiries.filter(e => 
+      e.title.toLowerCase().includes(searchLower) ||
+      e.description.toLowerCase().includes(searchLower) ||
+      e.reporter?.name?.toLowerCase().includes(searchLower) ||
+      e.reporter?.email?.toLowerCase().includes(searchLower)
+    );
   }
 
   clearFilters(): void {

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Enquiry API Collection",
-    "description": "Postman collection for Spring Boot Enquiry API with actual endpoints from OpenAPI spec",
+    "description": "Postman collection for Spring Boot Enquiry API - Updated with latest OpenAPI spec from http://localhost:8081/api/api-docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -92,11 +92,13 @@
                   "    const token = response.access_token;",
                   "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
                   "    ",
-                  "    // Set user variables for reporter",
-                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
-                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    ",
                   "    console.log('✅ Admin token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -180,11 +182,13 @@
                   "    const token = response.access_token;",
                   "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
                   "    ",
-                  "    // Set user variables for reporter",
-                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
-                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    ",
                   "    console.log('✅ Manager token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -248,11 +252,13 @@
                   "    const token = response.access_token;",
                   "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
                   "    ",
-                  "    // Set user variables for reporter",
-                  "    pm.collectionVariables.set('current_username', payload.preferred_username);",
-                  "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    ",
                   "    console.log('✅ User token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -312,7 +318,17 @@
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
                   "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
+                  "    ",
                   "    console.log('✅ Analyst token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -372,7 +388,17 @@
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
                   "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
+                  "    ",
                   "    console.log('✅ Tech1 token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -432,7 +458,17 @@
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
                   "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
+                  "    ",
                   "    console.log('✅ Tech2 token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -492,7 +528,17 @@
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
                   "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
+                  "    ",
                   "    console.log('✅ Business1 token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -552,7 +598,17 @@
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('spring_boot_access_token', response.access_token);",
                   "    ",
+                  "    // Parse JWT to extract user info",
+                  "    const token = response.access_token;",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
+                  "    ",
                   "    console.log('✅ Business2 token obtained');",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "} else { console.log('❌ Auth failed'); }"
                 ],
                 "type": "text/javascript"
@@ -672,7 +728,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Test Enquiry\",\n  \"description\": \"This is a test enquiry created by user\",\n  \"type\": \"TECH_SUPPORT\",\n  \"status\": \"OPEN\",\n  \"reporter\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "raw": "{\n  \"title\": \"Test Enquiry\",\n  \"description\": \"This is a test enquiry created by user\",\n  \"type\": \"TECH_SUPPORT\",\n  \"status\": \"OPEN\",\n  \"reporter\": {\n    \"userId\": \"{{current_user_id}}\",\n    \"name\": \"{{current_user_name}}\",\n    \"email\": \"{{current_user_email}}\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -869,7 +925,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"comment\": \"This is a test comment on the enquiry\",\n  \"author\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "raw": "{\n  \"comment\": \"This is a test comment on the enquiry\",\n  \"commentedBy\": {\n    \"userId\": \"{{current_user_id}}\",\n    \"name\": \"{{current_user_name}}\",\n    \"email\": \"{{current_user_email}}\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1055,8 +1111,8 @@
               "query": [
                 {
                   "key": "resolutionNotes",
-                  "value": "Issue has been resolved successfully by {{current_username}} ({{current_email}})",
-                  "description": "Notes about the resolution with resolver info"
+                  "value": "Issue has been resolved successfully",
+                  "description": "Notes about the resolution"
                 }
               ]
             },
@@ -1087,7 +1143,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"{{current_username}}\",\n  \"email\": \"{{current_email}}\"\n}",
+              "raw": "{\n  \"userId\": \"{{current_user_id}}\",\n  \"name\": \"{{current_user_name}}\",\n  \"email\": \"{{current_user_email}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1255,7 +1311,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Cross-Service Enquiry\",\n    \"description\": \"This enquiry is created from Spring Boot service\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}",
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Cross-Service Enquiry\",\n    \"description\": \"This enquiry is created from Spring Boot service\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"userId\": \"{{current_user_id}}\",\n      \"name\": \"{{current_user_name}}\",\n      \"email\": \"{{current_user_email}}\"\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1723,12 +1779,17 @@
       "type": "string"
     },
     {
-      "key": "current_username",
+      "key": "current_user_id",
       "value": "",
       "type": "string"
     },
     {
-      "key": "current_email",
+      "key": "current_user_name",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_user_email",
       "value": "",
       "type": "string"
     }

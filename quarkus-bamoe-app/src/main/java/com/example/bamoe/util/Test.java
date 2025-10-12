@@ -11,7 +11,6 @@ public class Test {
         System.out.println("Hello, World!");
         Enquiry enquiry = new Enquiry();
         enquiry.setType(EnquiryType.BUSINESS_CASE);
-        boolean isBusinessCase = enquiry.getType() == EnquiryType.BUSINESS_CASE;
         enquiry.getStatus().name().equals("RESOLVED");
         enquiry.getStatus().name().equals("CLOSED");
         enquiry.getStatus().name().equals("CANCELLED");

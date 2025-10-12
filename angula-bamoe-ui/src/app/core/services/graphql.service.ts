@@ -192,7 +192,7 @@ export class GraphQLService {
             id: node.id,
             name: node.name,
             type: node.type,
-            status: node.enter ? 'completed' : 'pending',
+            status: node.exit ? 'completed' : 'active',
             startTime: node.enter,
             endTime: node.exit,
             assignee: node.actualOwner

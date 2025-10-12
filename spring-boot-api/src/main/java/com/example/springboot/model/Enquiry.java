@@ -21,8 +21,8 @@ import java.util.UUID;
 @Table(name = "enquiries", indexes = {
     @Index(name = "idx_enquiry_type", columnList = "type"),
     @Index(name = "idx_enquiry_status", columnList = "status"),
-    @Index(name = "idx_enquiry_reporter", columnList = "reporter"),
-    @Index(name = "idx_enquiry_assignee", columnList = "assignee"),
+    @Index(name = "idx_enquiry_reporter", columnList = "reporter_user_id"),
+    @Index(name = "idx_enquiry_assignee", columnList = "assignee_user_id"),
     @Index(name = "idx_enquiry_created_at", columnList = "createdAt")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -53,18 +53,12 @@ public class Enquiry {
     private EnquiryStatus status = EnquiryStatus.OPEN;
 
     @NotNull(message = "Reporter is required")
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "name", column = @Column(name = "reporter_name", nullable = false)),
-        @AttributeOverride(name = "email", column = @Column(name = "reporter_email", nullable = false))
-    })
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "reporter_user_id", nullable = false)
     private User reporter;
 
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "name", column = @Column(name = "assignee_name")),
-        @AttributeOverride(name = "email", column = @Column(name = "assignee_email"))
-    })
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "assignee_user_id")
     private User assignee;
 
     @Size(max = 2000, message = "Resolution notes must not exceed 2000 characters")
@@ -100,11 +94,11 @@ public class Enquiry {
     }
 
     // Convenience constructor with string parameters
-    public Enquiry(String title, String description, EnquiryType type, String reporterName, String reporterEmail) {
+    public Enquiry(String title, String description, EnquiryType type, String reporterUserId, String reporterName, String reporterEmail) {
         this.title = title;
         this.description = description;
         this.type = type;
-        this.reporter = new User(reporterName, reporterEmail);
+        this.reporter = new User(reporterUserId, reporterName, reporterEmail);
     }
 
     // Simple business methods - no automatic state changes
@@ -113,9 +107,9 @@ public class Enquiry {
         return this;
     }
 
-    // Convenience method for assignment with name and email
-    public Enquiry assignTo(String assigneeName, String assigneeEmail) {
-        this.assignee = new User(assigneeName, assigneeEmail);
+    // Convenience method for assignment with user details
+    public Enquiry assignTo(String assigneeUserId, String assigneeName, String assigneeEmail) {
+        this.assignee = new User(assigneeUserId, assigneeName, assigneeEmail);
         return this;
     }
 

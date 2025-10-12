@@ -282,10 +282,11 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Map current user to backend User format (only name and email)
+    // Map current user to backend User format (name, email, and userId)
     const reporterUser = {
       name: currentUser.name,
-      email: currentUser.email
+      email: currentUser.email,
+      userId: currentUser.id || currentUser.userId
     };
     
     console.log('Current user from token:', currentUser);

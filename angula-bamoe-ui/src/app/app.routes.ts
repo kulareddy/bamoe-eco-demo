@@ -4,13 +4,8 @@ import { authGuard } from './core/guards/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/home',
+    redirectTo: '/dashboard',
     pathMatch: 'full'
-  },
-  {
-    path: 'home',
-    loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent),
-    canActivate: [authGuard]
   },
   {
     path: 'dashboard',
@@ -24,6 +19,11 @@ export const routes: Routes = [
   },
   {
     path: 'enquiries/new',
+    loadComponent: () => import('./features/enquiries/enquiry-form/enquiry-form.component').then(m => m.EnquiryFormComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'enquiries/create',
     loadComponent: () => import('./features/enquiries/enquiry-form/enquiry-form.component').then(m => m.EnquiryFormComponent),
     canActivate: [authGuard]
   },

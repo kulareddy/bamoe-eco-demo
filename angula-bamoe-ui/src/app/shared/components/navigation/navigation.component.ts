@@ -51,16 +51,6 @@ interface NavigationItem {
           <div class="user-details">
             <div class="user-name">{{ userInfo.name || userInfo.preferred_username }}</div>
             <div class="user-email">{{ userInfo.email }}</div>
-            <div class="user-roles" *ngIf="userInfo.roles && userInfo.roles.length > 0">
-              <span class="role-badge" 
-                    *ngFor="let role of userInfo.roles.slice(0, 2)"
-                    [class]="role">
-                {{ role }}
-              </span>
-              <span *ngIf="userInfo.roles.length > 2" class="more-roles">
-                +{{ userInfo.roles.length - 2 }} more
-              </span>
-            </div>
           </div>
         </div>
 
@@ -144,36 +134,6 @@ interface NavigationItem {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 8px;
-    }
-
-    .user-roles {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      align-items: center;
-    }
-
-    .role-badge {
-      background-color: #e0e0e0;
-      color: #333;
-      padding: 2px 6px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: 500;
-      text-transform: uppercase;
-      
-      &.admin { background-color: #9c27b0; color: white; }
-      &.manager { background-color: #3f51b5; color: white; }
-      &.user { background-color: #607d8b; color: white; }
-      &.analyst { background-color: #009688; color: white; }
-      &.tech-support { background-color: #ff5722; color: white; }
-      &.business-support { background-color: #795548; color: white; }
-    }
-
-    .more-roles {
-      font-size: 10px;
-      color: #666;
     }
 
     .nav-menu {
@@ -217,7 +177,6 @@ export class NavigationComponent implements OnInit {
   userInfo$: Observable<UserInfo | null>;
 
   private navigationItems: NavigationItem[] = [
-    { label: 'Home', icon: 'home', route: '/home' },
     { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
     { label: 'Enquiries', icon: 'help_outline', route: '/enquiries' },
     { label: 'My Tasks', icon: 'task', route: '/tasks' },
