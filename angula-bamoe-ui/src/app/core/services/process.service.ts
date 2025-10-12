@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ProcessInstance, Task, TaskForm } from '../models/process.model';
 import { Enquiry, Comment } from '../models/enquiry.model';
@@ -13,7 +13,10 @@ import { AuthService } from './auth.service';
 export class ProcessService {
   private apiUrl = environment.api.processService;
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(
+    private http: HttpClient, 
+    private authService: AuthService
+  ) {}
 
   // Process Instance Management - Quarkus BAMOE
   getAllProcesses(): Observable<ProcessInstance[]> {
@@ -223,37 +226,17 @@ export class ProcessService {
     return this.http.get(`${this.apiUrl}/svg/processes/EnquiryProcess/instances/${processId}`, { responseType: 'text' });
   }
 
-  // Process Comments - Use BAMOE process endpoint with Note object
-  getProcessComments(processInstanceId: string): Observable<Comment[]> {
-    // Get comments from process instance variables (enquiry.comments)
-    return this.http.get<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}`)
-      .pipe(
-        map(processInstance => {
-          const enquiry = processInstance.variables?.enquiry;
-          return enquiry?.comments || [];
-        }),
-        catchError(error => {
-          console.error('Error loading process comments:', error);
-          return of([]);
-        })
-      );
-  }
+  // Process Comments - Comments are extracted from process variables (enquiry.comments)
+  // No separate endpoint needed - use getProcessInfo() and extract from variables.enquiry.comments
 
-  addProcessComment(processInstanceId: string, comment: Comment): Observable<Comment> {
-    // Send comment to BAMOE process - signal expects property named "comment"
-    const signalData = {
-      comment: {
-        comment: comment.comment,
-        commentedBy: comment.commentedBy
-        // commentedAt is optional - backend will set it if not provided
-      }
-    };
-
-    console.log('Sending comment signal data to BAMOE:', signalData);
+  addProcessComment(processInstanceId: string, commentText: string): Observable<any> {
+    // Send comment text as string to BAMOE process signal
+    // User (userId, name, email) is automatically extracted from JWT token server-side
+    console.log('Sending comment signal to BAMOE:', commentText);
     console.log('Endpoint:', `${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`);
 
-    // Send signal with comment property containing Note object
-    return this.http.post<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, signalData, {
+    // Send signal with comment text as JSON string
+    return this.http.post<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, JSON.stringify(commentText), {
       headers: {
         'Content-Type': 'application/json'
       }

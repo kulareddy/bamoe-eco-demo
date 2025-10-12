@@ -499,7 +499,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
           console.log('Enquiry received:', enquiry);
           console.log('Reporter:', enquiry.reporter);
           console.log('Reporter Name:', enquiry.reporter?.name);
-          console.log('Reporter ID:', enquiry.reporter?.id);
+          console.log('Reporter User ID:', enquiry.reporter?.userId);
           console.log('Reporter Email:', enquiry.reporter?.email);
           
           // Check if user information is properly populated

@@ -1,46 +1,22 @@
 package com.example.bamoe.model;
 
 /**
- * Enum representing enquiry status values based on API specification
+ * Enumeration representing the status of an enquiry.
  */
 public enum EnquiryStatus {
-    
-    OPEN("OPEN", "Enquiry is open"),
-    IN_PROGRESS("IN_PROGRESS", "Enquiry is in progress"),
-    RESOLVED("RESOLVED", "Enquiry has been resolved"),
-    CLOSED("CLOSED", "Enquiry has been closed"),
-    CANCELLED("CANCELLED", "Enquiry has been cancelled");
-    
-    private final String code;
-    private final String description;
-    
-    EnquiryStatus(String code, String description) {
-        this.code = code;
-        this.description = description;
+    OPEN("Open"),
+    IN_PROGRESS("In Progress"),
+    RESOLVED("Resolved"),
+    CLOSED("Closed"),
+    CANCELLED("Cancelled");
+
+    private final String displayName;
+
+    EnquiryStatus(String displayName) {
+        this.displayName = displayName;
     }
-    
-    public String getCode() {
-        return code;
-    }
-    
-    public String getDescription() {
-        return description;
-    }
-    
-    @Override
-    public String toString() {
-        return code;
-    }
-    
-    /**
-     * Get status by code
-     */
-    public static EnquiryStatus fromCode(String code) {
-        for (EnquiryStatus status : values()) {
-            if (status.code.equals(code)) {
-                return status;
-            }
-        }
-        throw new IllegalArgumentException("Unknown enquiry status code: " + code);
+
+    public String getDisplayName() {
+        return displayName;
     }
 }

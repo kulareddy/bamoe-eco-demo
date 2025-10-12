@@ -9,7 +9,10 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import java.util.List;
 
 /**
- * Gateway service for enquiry operations
+ * Gateway service for enquiry operations.
+ * Provides a higher-level abstraction over EnquiryClient for business logic.
+ * 
+ * Delegates to Spring Boot API endpoints via REST client with OIDC token propagation.
  */
 @ApplicationScoped
 public class EnquiryGateway {

@@ -52,6 +52,11 @@ A modern Spring Boot REST API for managing enquiries (tech support, business cas
 
 ## Configuration
 
+### OAuth2/OIDC Configuration
+
+For detailed OAuth2 and OIDC configuration (Keycloak, Azure Entra ID, etc.), see:
+📖 **[OAuth2 Configuration Guide](../angula-bamoe-ui/docs/OAUTH2_CONFIGURATION.md)**
+
 ### Environment Variables
 
 Create `.env` file:

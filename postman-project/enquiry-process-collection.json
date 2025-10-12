@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Enquiry Process Collection",
-    "description": "Updated collection for Quarkus BAMOE Enquiry Process API with latest OpenAPI spec",
+    "description": "Quarkus BAMOE Enquiry Process API - Synced with http://localhost:8080/q/docs/openapi.json. All User objects (reporter, assignee, commentedBy) are automatically extracted from JWT token server-side. No need to send user info in requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -27,6 +27,21 @@
     },
     {
       "key": "user_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_user_name",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "current_user_email",
       "value": "",
       "type": "string"
     },
@@ -244,13 +259,20 @@
                   "    const response = pm.response.json();",
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
                   "    const token = response.access_token;",
-                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    pm.collectionVariables.set('current_username', payload.preferred_username);",
                   "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
                   "    console.log('\u2705 Admin token obtained');",
-                  "    console.log('Username:', payload.preferred_username);",
-                  "    console.log('Email:', payload.email);",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "    console.log('Groups:', payload.groups);",
                   "} else {",
                   "    console.log('\u274c Admin auth failed:', pm.response.text());",
@@ -322,13 +344,20 @@
                   "    const response = pm.response.json();",
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
                   "    const token = response.access_token;",
-                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    pm.collectionVariables.set('current_username', payload.preferred_username);",
                   "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
                   "    console.log('\u2705 Manager token obtained');",
-                  "    console.log('Username:', payload.preferred_username);",
-                  "    console.log('Email:', payload.email);",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "    console.log('Groups:', payload.groups);",
                   "} else {",
                   "    console.log('\u274c Manager auth failed:', pm.response.text());",
@@ -400,13 +429,20 @@
                   "    const response = pm.response.json();",
                   "    pm.collectionVariables.set('user_access_token', response.access_token);",
                   "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "    ",
+                  "    // Parse JWT to extract user info",
                   "    const token = response.access_token;",
-                  "    const payload = JSON.parse(atob(token.split('.')[1]));",
+                  "    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());",
+                  "    ",
+                  "    // Set user variables",
+                  "    pm.collectionVariables.set('current_user_id', payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_name', payload.name || payload.preferred_username);",
+                  "    pm.collectionVariables.set('current_user_email', payload.email);",
                   "    pm.collectionVariables.set('current_username', payload.preferred_username);",
                   "    pm.collectionVariables.set('current_email', payload.email);",
+                  "    ",
                   "    console.log('\u2705 User token obtained');",
-                  "    console.log('Username:', payload.preferred_username);",
-                  "    console.log('Email:', payload.email);",
+                  "    console.log('📋 User Info - ID:', payload.preferred_username, 'Name:', payload.name, 'Email:', payload.email);",
                   "    console.log('Groups:', payload.groups);",
                   "} else {",
                   "    console.log('\u274c User auth failed:', pm.response.text());",
@@ -942,7 +978,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enquiry\": {\n    \"title\": \"User Enquiry Process\",\n    \"description\": \"This enquiry process is created by a user\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"User Enquiry Process\",\n    \"description\": \"This enquiry process is created by a user\",\n    \"type\": \"TECH_SUPPORT\"\n  }\n}"
             },
             "url": {
               "raw": "{{quarkus_base_url}}/EnquiryProcess?businessKey={{enquiry_process_id}}",
@@ -958,7 +994,8 @@
                   "value": "{{enquiry_process_id}}"
                 }
               ]
-            }
+            },
+            "description": "Create new enquiry process. Reporter (userId, name, email) is automatically extracted from JWT token. Status defaults to OPEN if not provided."
           },
           "event": [
             {
@@ -1024,7 +1061,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry Process\",\n    \"description\": \"This enquiry process has been updated\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry Process\",\n    \"description\": \"This enquiry process has been updated\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\"\n  }\n}"
             },
             "url": {
               "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
@@ -1050,7 +1087,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Patched Enquiry Process\",\n    \"description\": \"This enquiry process has been patched\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+              "raw": "{\n  \"enquiry\": {\n    \"title\": \"Patched Enquiry Process\",\n    \"description\": \"This enquiry process has been patched\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\"\n  }\n}"
             },
             "url": {
               "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}",
@@ -1097,7 +1134,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"comment\": \"Comment added by {{current_username}}\",\n  \"commentedBy\": {\n    \"name\": \"{{current_username}}\",\n    \"email\": \"{{current_email}}\"\n  }\n}",
+              "raw": "\"This is a comment added via signal. User info extracted from JWT token automatically.\"",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1114,7 +1151,8 @@
                 "{{process_instance_id}}",
                 "comment"
               ]
-            }
+            },
+            "description": "Add comment to enquiry process. Sends comment text as string. User info (userId, name, email) is automatically extracted from JWT token server-side and used to create the commentedBy User object."
           },
           "event": [
             {
@@ -1380,7 +1418,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry with Comment\",\n    \"description\": \"This enquiry has been updated with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Updated Enquiry with Comment\",\n    \"description\": \"This enquiry has been updated with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
@@ -1414,7 +1452,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry with Comment Added\",\n    \"description\": \"This enquiry has been completed with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry with Comment Added\",\n    \"description\": \"This enquiry has been completed with a comment\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"IN_PROGRESS\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Add_Comment/{{current_task_id}}",
@@ -1534,7 +1572,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Closed\",\n    \"description\": \"This enquiry has been closed\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CLOSED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Closed\",\n    \"description\": \"This enquiry has been closed\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CLOSED\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Close/{{current_task_id}}",
@@ -1601,7 +1639,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Reopened\",\n    \"description\": \"This enquiry has been reopened\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RE_OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Reopened\",\n    \"description\": \"This enquiry has been reopened\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_Reopen/{{current_task_id}}",
@@ -1668,7 +1706,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Cancelled\",\n    \"description\": \"This enquiry has been cancelled\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CANCELLED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Cancelled\",\n    \"description\": \"This enquiry has been cancelled\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"CANCELLED\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Enquiry_cancel/{{current_task_id}}",
@@ -1735,7 +1773,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"New Enquiry Created\",\n    \"description\": \"This enquiry has been created through the service task\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"OPEN\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"New Enquiry Created\",\n    \"description\": \"This enquiry has been created through the service task\",\n    \"type\": \"TECH_SUPPORT\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Create_Enquiry/{{current_task_id}}",
@@ -1802,7 +1840,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Resolved\",\n    \"description\": \"This enquiry has been resolved\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RESOLVED\",\n    \"reporter\": {\n      \"name\": \"{{current_username}}\",\n      \"email\": \"{{current_email}}\"\n    }\n  }\n}"
+                  "raw": "{\n  \"enquiry\": {\n    \"title\": \"Enquiry Resolved\",\n    \"description\": \"This enquiry has been resolved\",\n    \"type\": \"TECH_SUPPORT\",\n    \"status\": \"RESOLVED\"\n  }\n}"
                 },
                 "url": {
                   "raw": "{{quarkus_base_url}}/EnquiryProcess/{{enquiry_process_id}}/Service_Task_Resolved/{{current_task_id}}",

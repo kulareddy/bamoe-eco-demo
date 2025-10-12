@@ -89,7 +89,6 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
             <th mat-header-cell *matHeaderCellDef>Title</th>
             <td mat-cell *matCellDef="let enquiry">
               <div class="enquiry-title">{{ enquiry.title }}</div>
-              <div class="enquiry-description">{{ enquiry.description | slice:0:100 }}...</div>
             </td>
           </ng-container>
 
@@ -201,12 +200,6 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
 
     .enquiry-title {
       font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .enquiry-description {
-      color: #666;
-      font-size: 14px;
     }
 
     .enquiry-row {

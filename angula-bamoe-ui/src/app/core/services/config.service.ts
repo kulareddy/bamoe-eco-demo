@@ -56,7 +56,7 @@ export class ConfigService {
         provider: this.getEnvValue('AUTH_PROVIDER', 'keycloak'),
         keycloak: {
           url: this.getEnvValue('KEYCLOAK_URL', environment.auth.issuer?.split('/realms/')[0] || 'http://localhost:9180'),
-          realm: this.getEnvValue('KEYCLOAK_REALM', environment.auth.realm || 'quarkus-realm'),
+          realm: this.getEnvValue('KEYCLOAK_REALM', (environment.auth as any).realm || 'quarkus-realm'),
           clientId: this.getEnvValue('KEYCLOAK_CLIENT_ID', environment.auth.clientId || 'quarkus-bamoe-frontend'),
           scope: this.getEnvValue('KEYCLOAK_SCOPE', environment.auth.scope || 'openid profile email'),
           showDebug: this.getEnvValue('KEYCLOAK_SHOW_DEBUG', 'true') === 'true',

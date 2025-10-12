@@ -215,24 +215,31 @@ export class GraphQLService {
   getProcessInstanceWithVariables(processInstanceId: string): Observable<any> {
     const query = `
       query GetProcessInstance($processInstanceId: String!) {
-        processInstance(id: $processInstanceId) {
+        ProcessInstances(where: {id: {equal: $processInstanceId}}) {
           id
           processId
           processName
-          status
-          startDate
-          endDate
-          initiator
+          state
+          start
+          end
+          businessKey
           variables
         }
       }
     `;
 
-    return this.http.post<{ data: { processInstance: any } }>(this.graphqlUrl, {
+    return this.http.post<{ data: { ProcessInstances: any[] } }>(this.graphqlUrl, {
       query,
       variables: { processInstanceId }
     }).pipe(
-      map(response => response.data.processInstance)
+      map(response => {
+        console.log('GraphQL response for process instance:', response);
+        if (!response?.data?.ProcessInstances || response.data.ProcessInstances.length === 0) {
+          console.warn('No process instance found in GraphQL response');
+          return null;
+        }
+        return response.data.ProcessInstances[0];
+      })
     );
   }
 

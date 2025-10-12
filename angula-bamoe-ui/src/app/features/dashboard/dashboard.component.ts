@@ -105,22 +105,24 @@ interface DashboardStats {
       </div>
 
       <div class="recent-items">
-        <mat-card>
+        <mat-card class="recent-enquiries-card">
           <mat-card-header>
-            <mat-card-title>Recent Enquiries</mat-card-title>
+            <mat-card-title>
+              <mat-icon class="section-icon">history</mat-icon>
+              Recent Enquiries
+            </mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <div *ngIf="recentEnquiries.length === 0" class="no-items">
-              No recent enquiries
+              <mat-icon>inbox</mat-icon>
+              <p>No recent enquiries</p>
             </div>
-            <div *ngFor="let enquiry of recentEnquiries" class="enquiry-item">
-              <div class="enquiry-info">
-                <div class="enquiry-title">{{ enquiry.title }}</div>
-                <div class="enquiry-meta">{{ enquiry.type }} • {{ enquiry.status }} • Reported by: {{ enquiry.reporter?.name || 'user1' }}</div>
-              </div>
-              <button mat-icon-button [routerLink]="['/enquiries', enquiry.id]">
-                <mat-icon>arrow_forward</mat-icon>
-              </button>
+            <div *ngFor="let enquiry of recentEnquiries" class="enquiry-item" [routerLink]="['/enquiries', enquiry.id]">
+              <div class="enquiry-status-indicator" [class]="'status-' + enquiry.status.toLowerCase()"></div>
+              <div class="enquiry-title">{{ enquiry.title }}</div>
+              <span class="meta-chip">{{ enquiry.type }}</span>
+              <span class="meta-chip status-chip" [class]="'status-' + enquiry.status.toLowerCase()">{{ enquiry.status }}</span>
+              <span class="meta-reporter">{{ enquiry.reporter?.name || 'Unknown' }}</span>
             </div>
           </mat-card-content>
         </mat-card>
@@ -212,35 +214,114 @@ interface DashboardStats {
       margin-bottom: 32px;
     }
 
+    .recent-enquiries-card {
+      mat-card-header {
+        padding: 16px;
+        background-color: #f5f5f5;
+        margin: -16px -16px 16px -16px;
+      }
+
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 20px;
+        margin: 0;
+      }
+
+      .section-icon {
+        color: #2196f3;
+      }
+    }
+
     .enquiry-item {
       display: flex;
       align-items: center;
-      padding: 12px 0;
+      gap: 12px;
+      padding: 12px;
       border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      background-color: #fafafa;
+      margin-bottom: 4px;
+    }
+
+    .enquiry-item:hover {
+      background-color: #f0f0f0;
     }
 
     .enquiry-item:last-child {
       border-bottom: none;
+      margin-bottom: 0;
     }
 
-    .enquiry-info {
-      flex: 1;
+    .enquiry-status-indicator {
+      width: 4px;
+      height: 24px;
+      border-radius: 2px;
+      flex-shrink: 0;
+
+      &.status-open { background-color: #2196f3; }
+      &.status-in_progress { background-color: #ff9800; }
+      &.status-resolved { background-color: #4caf50; }
+      &.status-closed { background-color: #9e9e9e; }
+      &.status-cancelled { background-color: #f44336; }
     }
 
     .enquiry-title {
       font-weight: 500;
-      margin-bottom: 4px;
+      color: #333;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
     }
 
-    .enquiry-meta {
+    .meta-chip {
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      background-color: #e0e0e0;
       color: #666;
-      font-size: 14px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .meta-chip.status-chip {
+      font-weight: 500;
+
+      &.status-open { background-color: #e3f2fd; color: #1976d2; }
+      &.status-in_progress { background-color: #fff3e0; color: #f57c00; }
+      &.status-resolved { background-color: #e8f5e9; color: #388e3c; }
+      &.status-closed { background-color: #f5f5f5; color: #616161; }
+      &.status-cancelled { background-color: #ffebee; color: #c62828; }
+    }
+
+    .meta-reporter {
+      color: #666;
+      font-size: 13px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .no-items {
       text-align: center;
       color: #666;
-      padding: 24px;
+      padding: 48px 24px;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #ccc;
+        margin-bottom: 16px;
+      }
+
+      p {
+        margin: 0;
+        font-size: 16px;
+      }
     }
   `]
 })

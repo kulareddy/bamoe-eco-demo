@@ -24,11 +24,12 @@ export interface Comment {
 }
 
 export interface User {
-  id?: string;
-  name: string;
-  email: string;
-  userId?: string;
-  roles?: string[];
+  userId: string;      // Primary key (from JWT preferred_username)
+  name: string;        // Full name (from JWT name claim)
+  email: string;       // Email address (from JWT email claim)
+  createdAt?: Date;
+  updatedAt?: Date;
+  roles?: string[];    // Optional, for UI role-based features
 }
 
 export enum EnquiryType {

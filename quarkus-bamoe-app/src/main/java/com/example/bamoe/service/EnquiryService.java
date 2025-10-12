@@ -6,7 +6,7 @@ import com.example.bamoe.model.Enquiry;
 import com.example.bamoe.model.EnquiryStatus;
 import com.example.bamoe.model.User;
 import com.example.bamoe.model.ErrorResponse;
-import com.example.bamoe.util.JsonUtils;
+import com.example.bamoe.filter.UserProvider;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -27,89 +27,57 @@ public class EnquiryService {
     @Inject
     EnquiryGateway enquiryGateway;
 
+    @Inject
+    UserProvider userProvider;
+
+    /**
+     * Get predefined manager user for escalation.
+     * @return Manager user object
+     */
+    private User getManagerUser() {
+        return new User("manager1", "Manager One", "manager1@example.com");
+    }
+
 
     /**
      * Create a new enquiry
      */
     public Enquiry createEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
-        LOG.info("EnquiryService: createEnquiry called");
-        LOG.info("enquiry:\n{}", JsonUtils.toPrettyJson(enquiry));
+        LOG.info("Creating enquiry: {}", enquiry.getTitle());
         
-        try {
-            // Set default values if not provided
-            if (enquiry.getStatus() == null) {
-                enquiry.setStatus(EnquiryStatus.OPEN);
-            }
-            if (enquiry.getCreatedAt() == null) {
-                enquiry.setCreatedAt(LocalDateTime.now());
-            }
-            if (enquiry.getUpdatedAt() == null) {
-                enquiry.setUpdatedAt(LocalDateTime.now());
-            }
-            if (enquiry.getResolvedAt() == null) {
-                enquiry.setResolvedAt(LocalDateTime.now());
-            }
-            String processInstanceId = kcontext.getProcessInstance().getId();
-            LOG.info("ProcessInstanceId: {}", processInstanceId);
-            enquiry.setProcessInstanceId(processInstanceId);
-            Enquiry createdEnquiry = enquiryGateway.createEnquiry(enquiry);
-            LOG.info("Enquiry created successfully with ID: {}", createdEnquiry.getId());
-            
-            
-            return createdEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Service Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries",
-                "POST"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService error: " + e.getMessage(), e);
+        // Enrich reporter with token user if needed
+        User tokenUser = userProvider.getCurrentUser();
+        if (enquiry.getReporter() == null) {
+            enquiry.setReporter(tokenUser);
+        } else {
+            User reporter = enquiry.getReporter();
+            if (reporter.getUserId() == null || reporter.getUserId().isEmpty()) reporter.setUserId(tokenUser.getUserId());
+            if (reporter.getName() == null || reporter.getName().isEmpty()) reporter.setName(tokenUser.getName());
+            if (reporter.getEmail() == null || reporter.getEmail().isEmpty()) reporter.setEmail(tokenUser.getEmail());
         }
+        
+        // Set defaults
+        if (enquiry.getStatus() == null) enquiry.setStatus(EnquiryStatus.OPEN);
+        enquiry.setProcessInstanceId(kcontext.getProcessInstance().getId());
+        
+        LOG.info("Reporter: {}", enquiry.getReporter().getName());
+        return enquiryGateway.createEnquiry(enquiry);
     }
 
     /**
-     * Auto-assign enquiry based on type and priority
+     * Auto-assign enquiry based on type and priority.
+     * If no assignee is set, assigns to current user from JWT token.
      */
     public Enquiry assignEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
-        LOG.info("Auto-assigning enquiry: {}", enquiry.getTitle());
+        LOG.info("Assigning enquiry: {}", enquiry.getTitle());
         
-        try {
-            enquiry.setStatus(EnquiryStatus.IN_PROGRESS);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry assigned to: {}", updatedEnquiry.getAssignee() != null ? updatedEnquiry.getAssignee().getName() : "Unassigned");
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during assignment");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during assignment", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Assignment Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService assignment error: " + e.getMessage(), e);
+        // Auto-assign to current user if not already assigned
+        if (enquiry.getAssignee() == null) {
+            enquiry.setAssignee(userProvider.getCurrentUser());
         }
+        
+        LOG.info("Assigned to: {}", enquiry.getAssignee().getName());
+        return updateEnquiryStatus(enquiry, EnquiryStatus.IN_PROGRESS, kcontext);
     }
 
     /**
@@ -118,222 +86,94 @@ public class EnquiryService {
     public Enquiry escalateEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
         LOG.info("Escalating enquiry: {}", enquiry.getTitle());
         
-        try {
-            // Create management user
-            User manager = new User("Management", "manager@example.com");
-            enquiry.setAssignee(manager);
-            enquiry.setStatus(EnquiryStatus.IN_PROGRESS);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry escalated to management");
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during escalation");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during escalation", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Escalation Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService escalation error: " + e.getMessage(), e);
-        }
+        enquiry.setAssignee(getManagerUser());
+        LOG.info("Escalated to: {}", enquiry.getAssignee().getName());
+        return updateEnquiryStatus(enquiry, EnquiryStatus.IN_PROGRESS, kcontext);
     }
 
     public Enquiry resolveEnquiry(Enquiry enquiry, String resolveNotes, KogitoProcessContext kcontext) {
-        LOG.info("Resolving enquiry: {} with resolution: {}", enquiry.getTitle(), resolveNotes);
+        LOG.info("Resolving enquiry: {}", enquiry.getTitle());
+        String enquiryId = enquiry.getId().toString();
         
-        try {
-            enquiry.setStatus(EnquiryStatus.RESOLVED);
-            enquiry.setResolutionNotes(resolveNotes);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry resolved successfully");
-            
-            
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during closure");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during closure", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Closure Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService closure error: " + e.getMessage(), e);
-        }
+        // Orchestrate: add comment, then update status (single refresh)
+        addComment(resolveNotes, enquiryId);
+        enquiry.setStatus(EnquiryStatus.RESOLVED);
+        enquiry.setResolutionNotes(resolveNotes);
+        enquiry.setResolvedAt(LocalDateTime.now());
+        
+        return enquiryGateway.updateEnquiry(enquiryId, enquiry);
     }
 
     /**
      * Close enquiry with resolution
      */
     public Enquiry closeEnquiry(Enquiry enquiry, String closeNotes, KogitoProcessContext kcontext) {
-        LOG.info("Closing enquiry: {} with close notes: {}", enquiry.getTitle(), closeNotes);
+        LOG.info("Closing enquiry: {}", enquiry.getTitle());
+        String enquiryId = enquiry.getId().toString();
         
-        try {
-            enquiry.setStatus(EnquiryStatus.CLOSED);
-            enquiry.setResolutionNotes(closeNotes);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry closed successfully");
-            
-            
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during closure");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during closure", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Closure Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService closure error: " + e.getMessage(), e);
-        }
+        // Orchestrate: add comment, then update status (single refresh)
+        addComment(closeNotes, enquiryId);
+        enquiry.setStatus(EnquiryStatus.CLOSED);
+        enquiry.setResolutionNotes(closeNotes);
+        enquiry.setResolvedAt(LocalDateTime.now());
+        
+        return enquiryGateway.updateEnquiry(enquiryId, enquiry);
     }
 
     /**
      * Cancel enquiry
      */
     public Enquiry cancelEnquiry(Enquiry enquiry, String cancelNotes, KogitoProcessContext kcontext) {
-        LOG.info("Cancelling enquiry: {} - Reason: {}", enquiry.getTitle(), cancelNotes);
+        LOG.info("Cancelling enquiry: {}", enquiry.getTitle());
+        String enquiryId = enquiry.getId().toString();
+        String fullNotes = "Cancelled: " + cancelNotes;
         
-        try {
-            enquiry.setStatus(EnquiryStatus.CANCELLED);
-            enquiry.setResolutionNotes("Cancelled: " + cancelNotes);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry cancelled successfully");
-            
-            
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during cancellation");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during cancellation", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Cancellation Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService cancellation error: " + e.getMessage(), e);
-        }
+        // Orchestrate: add comment, then update status (single refresh)
+        addComment(fullNotes, enquiryId);
+        enquiry.setStatus(EnquiryStatus.CANCELLED);
+        enquiry.setResolutionNotes(fullNotes);
+        
+        return enquiryGateway.updateEnquiry(enquiryId, enquiry);
     }
 
     /**
      * Reopen enquiry for further investigation
      */
     public Enquiry reopenEnquiry(Enquiry enquiry, String reopenNotes, KogitoProcessContext kcontext) {
-        LOG.info("Reopening enquiry: {} - Reason: {}", enquiry.getTitle(), reopenNotes);
+        LOG.info("Reopening enquiry: {}", enquiry.getTitle());
+        String enquiryId = enquiry.getId().toString();
         
-        try {
-            enquiry.setStatus(EnquiryStatus.OPEN);
-            enquiry.setResolutionNotes(reopenNotes);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Enquiry reopened successfully");
-            
-            
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during reopen");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during reopen", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Reopen Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService reopen error: " + e.getMessage(), e);
-        }
+        // Orchestrate: add comment, then update status (single refresh)
+        addComment(reopenNotes, enquiryId);
+        enquiry.setStatus(EnquiryStatus.OPEN);
+        enquiry.setResolutionNotes(reopenNotes);
+        enquiry.setResolvedAt(null);
+        
+        return enquiryGateway.updateEnquiry(enquiryId, enquiry);
     }
 
     /**
-     * Add comment to enquiry
+     * Add comment to enquiry (BPMN signal handler - returns refreshed enquiry).
      */
-    public Enquiry addComment(Note comment, KogitoProcessContext kcontext) {
-        LOG.info("Adding comment to enquiry instance: {} by: {}", kcontext.getProcessInstance().getId(), comment.getCommentedBy().getName());
-        Enquiry enquiry = null;
-        try {
-            enquiry = (Enquiry) kcontext.getVariable("enquiry");
-            // Add comment to the enquiry
-            if (enquiry.getComments() == null) {
-                enquiry.setComments(new java.util.ArrayList<>());
-            }
-            
-            comment.setCommentedAt(LocalDateTime.now());
-            
-            enquiry.getComments().add(comment);
-            enquiry.setUpdatedAt(LocalDateTime.now());
-            
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
-            LOG.info("Comment added successfully to enquiry: {}", enquiry.getId());
-            return updatedEnquiry;
-            
-        } catch (WebApplicationException e) {
-            LOG.error("EnquiryService: WebApplicationException from enquiry service during comment addition");
-            ErrorResponse errorResponse = e.getResponse().readEntity(ErrorResponse.class);
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("EnquiryService: Unexpected error during comment addition", e);
-            ErrorResponse errorResponse = new ErrorResponse(
-                "ERR500",
-                "Enquiry Comment Addition Error",
-                e.getMessage(),
-                "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
-                "PUT"
-            );
-            kcontext.setVariable("errorResponse", errorResponse);
-            throw new jakarta.ws.rs.WebApplicationException("EnquiryService comment addition error: " + e.getMessage(), e);
-        }
+    public Enquiry addComment(String commentText, KogitoProcessContext kcontext) {
+        String enquiryId = ((Enquiry) kcontext.getVariable("enquiry")).getId().toString();
+        LOG.info("Adding comment to enquiry: {} with text: '{}'", enquiryId, commentText);
+        
+        addComment(commentText, enquiryId);
+        
+        Enquiry refreshedEnquiry = enquiryGateway.getEnquiry(enquiryId);
+        LOG.info("Refreshed enquiry retrieved with {} comments", 
+                 refreshedEnquiry.getComments() != null ? refreshedEnquiry.getComments().size() : 0);
+        
+        return refreshedEnquiry;
+    }
+    
+    /**
+     * Add comment to enquiry (internal orchestration - no refresh).
+     */
+    private void addComment(String commentText, String enquiryId) {
+        enquiryGateway.addComment(enquiryId, new Note(commentText, userProvider.getCurrentUser()));
+        LOG.info("Comment added to: {}", enquiryId);
     }
 
     /**
@@ -375,9 +215,9 @@ public class EnquiryService {
         
         try {
             enquiry.setStatus(status);
-            enquiry.setUpdatedAt(LocalDateTime.now());
+            // Note: updatedAt is auto-managed by Spring Boot API (JPA auditing)
             
-            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId(), enquiry);
+            Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
             LOG.info("Enquiry status updated successfully");
             
             
@@ -395,7 +235,7 @@ public class EnquiryService {
                 "Enquiry Status Update Error",
                 e.getMessage(),
                 "enquiry-service",
-                "/enquiries/" + enquiry.getId(),
+                "/enquiries/" + (enquiry.getId() != null ? enquiry.getId().toString() : "unknown"),
                 "PUT"
             );
             kcontext.setVariable("errorResponse", errorResponse);

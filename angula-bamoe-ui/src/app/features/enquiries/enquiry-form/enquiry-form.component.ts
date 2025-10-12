@@ -282,39 +282,13 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Map current user to backend User format (name, email, and userId)
-    const reporterUser = {
-      name: currentUser.name,
-      email: currentUser.email,
-      userId: currentUser.id || currentUser.userId
-    };
-    
-    console.log('Current user from token:', currentUser);
-    console.log('Reporter user being sent:', reporterUser);
+    // Create enquiry through BAMOE process
+    // Reporter user (userId, name, email) is automatically extracted from JWT token server-side
+    console.log('Creating enquiry for user:', currentUser.name, '(', currentUser.userId, ')');
+    console.log('Enquiry data:', enquiryData);
 
-    // Add current user as reporter
-    const enquiryWithUser = {
-      ...enquiryData,
-      reporter: reporterUser
-    };
-    
-    console.log('Creating enquiry with user:', currentUser);
-    console.log('Mapped reporter user:', reporterUser);
-    console.log('User Name:', currentUser.name);
-    console.log('User Email:', currentUser.email);
-    console.log('User ID:', currentUser.id);
-    console.log('Enquiry data:', enquiryWithUser);
-    
-    // Validate that we have the required user information
-    if (!currentUser.name || currentUser.name === 'Unknown User') {
-      console.warn('User name is missing or unknown:', currentUser.name);
-    }
-    if (!currentUser.email) {
-      console.warn('User email is missing:', currentUser.email);
-    }
-
-    // Create enquiry through BAMOE process (handles both enquiry creation and process initiation)
-    this.processService.createEnquiry(enquiryWithUser)
+    // Create enquiry through BAMOE process (reporter auto-populated from JWT token)
+    this.processService.createEnquiry(enquiryData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (processInstance) => {

@@ -1,4 +1,4 @@
-package com.example.oidc;
+package com.example.bamoe.filter;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
@@ -75,3 +75,4 @@ public class OidcDiscoveryProxyResource {
             .build();
     }
 }
+

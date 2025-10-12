@@ -12,8 +12,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Observable, Subject, forkJoin, of } from 'rxjs';
-import { takeUntil, catchError } from 'rxjs/operators';
+import { Subject, timer } from 'rxjs';
+import { takeUntil, switchMap } from 'rxjs/operators';
 
 import { ProcessService } from '../../../core/services/process.service';
 import { GraphQLService, ProcessVisualizationData } from '../../../core/services/graphql.service';
@@ -199,14 +199,10 @@ interface ProcessNode {
                   <div class="comments-list">
                     <div *ngIf="comments.length > 0; else noComments">
                       <div *ngFor="let comment of comments" class="comment-item">
-                        <div class="comment-header">
-                          <mat-icon class="comment-icon">comment</mat-icon>
-                          <div class="comment-author">
-                            <strong>{{ comment.commentedBy.name || 'Unknown User' }}</strong>
-                            <span class="comment-date">{{ comment.commentedAt | date:'medium' }}</span>
-                          </div>
-                        </div>
-                        <div class="comment-content">{{ comment.comment }}</div>
+                        <mat-icon class="comment-icon">comment</mat-icon>
+                        <span class="comment-author">{{ comment.commentedBy.name || 'Unknown User' }}</span>
+                        <span class="comment-date">{{ comment.commentedAt | date:'short' }}</span>
+                        <span class="comment-content">{{ comment.comment }}</span>
                       </div>
                     </div>
                     <ng-template #noComments>
@@ -264,28 +260,8 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Check if GraphQL is available first
-    this.graphqlService.isGraphQLAvailable()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (isAvailable) => {
-          if (isAvailable) {
-            console.log('GraphQL is available, using BAMOE GraphQL API');
-            this.loadProcessDataViaGraphQL();
-          } else {
-            console.log('GraphQL not available, using REST API');
-            this.loadProcessDataViaRest();
-          }
-          // Load comments regardless of GraphQL/REST choice
-          this.loadComments();
-        },
-        error: (error) => {
-          console.error('Error checking GraphQL availability:', error);
-          // Fallback to REST API if GraphQL check fails
-          this.loadProcessDataViaRest();
-          this.loadComments();
-        }
-      });
+    console.log('Loading process visualization data via GraphQL');
+    this.loadProcessDataViaGraphQL();
   }
 
   private exploreGraphQLSchema(): void {
@@ -344,67 +320,19 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
           console.log('Process Variables from GraphQL:', this.processVariables);
           console.log('Process Variables keys:', Object.keys(this.processVariables));
           
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Error loading process data via GraphQL:', error);
-          // Fallback to REST API if GraphQL fails
-          this.loadProcessDataViaRest();
-        }
-      });
-  }
-
-  private loadProcessDataViaRest(): void {
-    // Fallback to REST API if GraphQL is not available
-    forkJoin({
-      svg: this.processService.getProcessSvg(this.processInstanceId).pipe(
-        catchError((error) => {
-          console.error('Error loading SVG:', error);
-          return of(null);
-        })
-      ),
-      processInfo: this.processService.getProcessInfo(this.processInstanceId).pipe(
-        catchError((error) => {
-          console.error('Error loading process info:', error);
-          return of(null);
-        })
-      ),
-      activities: this.processService.getProcessActivities(this.processInstanceId).pipe(
-        catchError((error) => {
-          console.error('Error loading activities:', error);
-          return of([]);
-        })
-      ),
-      history: this.processService.getProcessHistory(this.processInstanceId).pipe(
-        catchError((error) => {
-          console.error('Error loading history:', error);
-          return of([]);
-        })
-      )
-    })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (data) => {
-          this.processSvg = data.svg;
-          if (data.svg) {
-            this.safeProcessSvg = this.sanitizer.bypassSecurityTrustHtml(data.svg);
-          }
-          this.activities = this.filterActivities(data.activities);
-          this.processHistory = data.history;
-          
-          // Use variables from process info API call
-          if (data.processInfo && data.processInfo.variables) {
-            this.processVariables = data.processInfo.variables;
-          } else if (this.processInstance && this.processInstance.variables) {
-            this.processVariables = this.processInstance.variables;
+          // Extract comments from enquiry object in process variables
+          if (this.processVariables?.enquiry?.comments) {
+            this.comments = this.processVariables.enquiry.comments;
+            console.log('Loaded comments from GraphQL variables:', this.comments);
           } else {
-            this.processVariables = {};
+            this.comments = [];
+            console.log('No comments found in GraphQL variables');
           }
           
           this.loading = false;
         },
         error: (error) => {
-          console.error('Error loading process data via REST:', error);
+          console.error('❌ Error loading process data via GraphQL:', error);
           this.loading = false;
         }
       });
@@ -421,13 +349,15 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       return 'track_changes';
     }
     
-    // Service Enquiry Reopen - use same icon as Service Task Create Enquiry
-    if (name.includes('service enquiry reopen') || name.includes('enquiry reopen')) {
-      return 'settings_applications';
-    }
-    
-    // Service tasks - use system/settings icon
-    if (type.includes('service') || type.includes('servicetask') || name.includes('service task')) {
+    // All Service tasks from BPMN - use system/settings icon
+    if (type.includes('service') || type.includes('servicetask') || 
+        name.includes('service task') || 
+        name.includes('service add comment') ||
+        name.includes('service enquiry reopen') ||
+        name.includes('service task resolved') ||
+        name.includes('service task cancel') ||
+        name.includes('service task closed') ||
+        name.includes('service task create')) {
       return 'settings_applications';
     }
     
@@ -539,15 +469,26 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
   loadComments(): void {
     if (!this.processInstanceId) return;
 
-    this.processService.getProcessComments(this.processInstanceId)
+    console.log('Refreshing comments for process:', this.processInstanceId);
+
+    // Use GraphQL to get updated process variables
+    this.graphqlService.getProcessInstanceWithVariables(this.processInstanceId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (comments) => {
-          this.comments = comments || [];
-          console.log('Loaded comments:', this.comments);
+        next: (processInstance) => {
+          console.log('GraphQL process instance received for comment refresh');
+          
+          if (processInstance?.variables?.enquiry?.comments) {
+            this.comments = processInstance.variables.enquiry.comments;
+            this.processVariables = processInstance.variables; // Update cached variables
+            console.log('✅ Loaded', this.comments.length, 'comments from GraphQL');
+          } else {
+            this.comments = [];
+            console.log('⚠️ No comments found in GraphQL variables');
+          }
         },
         error: (error) => {
-          console.error('Error loading comments:', error);
+          console.error('❌ Error loading comments via GraphQL:', error);
           this.comments = [];
         }
       });
@@ -568,25 +509,25 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       return;
     }
     
-    // User information comes from the token (user1, user1@example.com)
-    const comment: Comment = {
-      comment: this.newComment.trim(),
-      commentedBy: {
-        name: currentUser.name,    // From token: user1
-        email: currentUser.email,  // From token: user1@example.com
-        userId: currentUser.id || currentUser.userId
-      }
-      // commentedAt will be set by the backend
-    };
+    // Send just the comment text
+    // User information (userId, name, email) is automatically extracted from JWT token server-side
+    const commentText = this.newComment.trim();
+    
+    console.log('Adding comment by user:', currentUser.name, '(', currentUser.userId, ')');
 
-    this.processService.addProcessComment(this.processInstanceId, comment)
-      .pipe(takeUntil(this.destroy$))
+    this.processService.addProcessComment(this.processInstanceId, commentText)
+      .pipe(
+        takeUntil(this.destroy$),
+        // Wait 500ms for Quarkus to update the enquiry variable with the new comment
+        switchMap(response => timer(500))
+      )
       .subscribe({
-        next: (addedComment) => {
-          this.comments.unshift(addedComment);
+        next: () => {
           this.newComment = '';
           this.addingComment = false;
-          console.log('Comment added successfully:', addedComment);
+          console.log('Comment added successfully, refreshing comments...');
+          // Refresh comments list after delay
+          this.loadComments();
         },
         error: (error) => {
           console.error('Error adding comment:', error);

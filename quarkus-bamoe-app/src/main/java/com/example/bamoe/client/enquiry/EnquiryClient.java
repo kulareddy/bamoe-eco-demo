@@ -12,8 +12,10 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import java.util.List;
 
 /**
- * REST client for enquiry service operations
- * Based on API specification from http://localhost:8081/api/api-docs
+ * REST client for enquiry service operations.
+ * Synced with Spring Boot API specification from http://localhost:8081/api/api-docs
+ * 
+ * All endpoints match the OpenAPI 3.1.0 specification with User and Comment models.
  */
 @RegisterRestClient(configKey = "enquiry-service")
 @RegisterProvider(RestClientErrorFilter.class)

@@ -314,14 +314,14 @@ export class AuthService implements IAuthService {
     console.log('User name:', userInfo.name);
     console.log('User email:', userInfo.email);
     
-    const user = {
-      id: userInfo.sub || '',
-      name: userInfo.preferred_username || userInfo.sub || 'Unknown User',
+    const user: User = {
+      userId: userInfo.preferred_username || userInfo.sub || '',
+      name: userInfo.name || userInfo.preferred_username || 'Unknown User',
       email: userInfo.email || '',
       roles: userInfo.roles || []
     };
     
-    console.log('Mapped user:', user);
+    console.log('Mapped user - userId:', user.userId, 'name:', user.name, 'email:', user.email);
     return user;
   }
 }
