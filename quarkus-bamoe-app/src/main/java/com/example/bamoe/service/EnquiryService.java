@@ -11,6 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.kie.kogito.internal.process.runtime.KogitoProcessContext;
+import org.kie.api.runtime.process.WorkflowProcessInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,19 +66,41 @@ public class EnquiryService {
     }
 
     /**
-     * Auto-assign enquiry based on type and priority.
-     * If no assignee is set, assigns to current user from JWT token.
+     * Handle task claim - for event listeners (no KogitoProcessContext available)
      */
-    public Enquiry assignEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
-        LOG.info("Assigning enquiry: {}", enquiry.getTitle());
-        
-        // Auto-assign to current user if not already assigned
-        if (enquiry.getAssignee() == null) {
-            enquiry.setAssignee(userProvider.getCurrentUser());
+    public void handleTaskClaim(WorkflowProcessInstance processInstance, String userId) {
+        Enquiry enquiry = (Enquiry) processInstance.getVariable("enquiry");
+        if (enquiry == null) {
+            LOG.warn("No enquiry found in process variables");
+            return;
         }
         
-        LOG.info("Assigned to: {}", enquiry.getAssignee().getName());
-        return updateEnquiryStatus(enquiry, EnquiryStatus.IN_PROGRESS, kcontext);
+        LOG.info("Task claimed - updating enquiry: {} by user: {}", enquiry.getTitle(), userId);
+        
+        enquiry.setAssignee(userProvider.getUserById(userId));
+        enquiry.setStatus(EnquiryStatus.IN_PROGRESS);
+        
+        Enquiry updated = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
+        processInstance.setVariable("enquiry", updated);
+    }
+    
+    /**
+     * Handle task release - for event listeners (no KogitoProcessContext available)
+     */
+    public void handleTaskRelease(WorkflowProcessInstance processInstance) {
+        Enquiry enquiry = (Enquiry) processInstance.getVariable("enquiry");
+        if (enquiry == null) {
+            LOG.warn("No enquiry found in process variables");
+            return;
+        }
+        
+        LOG.info("Task released - updating enquiry: {}", enquiry.getTitle());
+        
+        enquiry.setAssignee(null);
+        enquiry.setStatus(EnquiryStatus.OPEN);
+        
+        Enquiry updated = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
+        processInstance.setVariable("enquiry", updated);
     }
 
     /**

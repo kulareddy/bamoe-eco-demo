@@ -124,9 +124,6 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
               <button mat-icon-button [routerLink]="['/enquiries', enquiry.id]">
                 <mat-icon>visibility</mat-icon>
               </button>
-              <button mat-icon-button [routerLink]="['/enquiries', enquiry.id, 'edit']">
-                <mat-icon>edit</mat-icon>
-              </button>
             </td>
           </ng-container>
 

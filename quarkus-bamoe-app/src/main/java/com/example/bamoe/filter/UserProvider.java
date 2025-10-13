@@ -75,5 +75,28 @@ public class UserProvider {
     public boolean isInGroup(String group) {
         return hasRole(group);
     }
+
+    /**
+     * @param userId The user ID to create User object for
+     * @return User object with available information
+     */
+    public User getUserById(String userId) {
+        LOG.debug("Creating User object for userId: {}", userId);
+        
+        // Try to get additional info from JWT if this is the current user
+        try {
+            String currentUserId = getCurrentUserId();
+            if (userId.equals(currentUserId)) {
+                // This is the current user, we can get full info from token
+                LOG.debug("User is current user, returning full info from JWT");
+                return getCurrentUser();
+            }
+        } catch (Exception e) {
+            LOG.debug("Could not get current user from JWT (may not be in request context): {}", e.getMessage());
+        }
+        
+        LOG.debug("Creating basic User object with userId as name");
+        return new User(userId, userId, null);
+    }
 }
 
