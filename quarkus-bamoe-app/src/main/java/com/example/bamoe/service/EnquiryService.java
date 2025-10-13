@@ -11,7 +11,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.kie.kogito.internal.process.runtime.KogitoProcessContext;
-import org.kie.api.runtime.process.WorkflowProcessInstance;
+import org.kie.kogito.internal.process.runtime.KogitoWorkflowProcessInstance;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +67,12 @@ public class EnquiryService {
     }
 
     /**
-     * Handle task claim - for event listeners (no KogitoProcessContext available)
+     * Handle task claim - Kogito-native version using KogitoWorkflowProcessInstance API.
+     * Called from event listeners when tasks are claimed by users.
      */
-    public void handleTaskClaim(WorkflowProcessInstance processInstance, String userId) {
-        Enquiry enquiry = (Enquiry) processInstance.getVariable("enquiry");
+    public void handleTaskClaim(KogitoWorkflowProcessInstance processInstance, String userId) {
+        // KogitoWorkflowProcessInstance provides getVariables() returning Map
+        Enquiry enquiry = (Enquiry) processInstance.getVariables().get("enquiry");
         if (enquiry == null) {
             LOG.warn("No enquiry found in process variables");
             return;
@@ -81,14 +84,18 @@ public class EnquiryService {
         enquiry.setStatus(EnquiryStatus.IN_PROGRESS);
         
         Enquiry updated = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
-        processInstance.setVariable("enquiry", updated);
+        
+        // Update using Kogito API
+        processInstance.getVariables().put("enquiry", updated);
     }
     
     /**
-     * Handle task release - for event listeners (no KogitoProcessContext available)
+     * Handle task release - Kogito-native version using KogitoWorkflowProcessInstance API.
+     * Called from event listeners when tasks are released back to the group pool.
      */
-    public void handleTaskRelease(WorkflowProcessInstance processInstance) {
-        Enquiry enquiry = (Enquiry) processInstance.getVariable("enquiry");
+    public void handleTaskRelease(KogitoWorkflowProcessInstance processInstance) {
+        // KogitoWorkflowProcessInstance provides getVariables() returning Map
+        Enquiry enquiry = (Enquiry) processInstance.getVariables().get("enquiry");
         if (enquiry == null) {
             LOG.warn("No enquiry found in process variables");
             return;
@@ -100,7 +107,9 @@ public class EnquiryService {
         enquiry.setStatus(EnquiryStatus.OPEN);
         
         Enquiry updated = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
-        processInstance.setVariable("enquiry", updated);
+        
+        // Update using Kogito API
+        processInstance.getVariables().put("enquiry", updated);
     }
 
     /**

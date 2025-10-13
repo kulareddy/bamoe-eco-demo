@@ -1,0 +1,831 @@
+# Angular BAMOE UI - Cursor Rules
+
+## Overview
+Angular 19 standalone components application for BAMOE enquiry management with OAuth2/OIDC authentication, GraphQL integration, and Material Design.
+
+## Architecture
+
+### Technology Stack
+- **Angular 19+** - Standalone components, signals
+- **Material Design** - Angular Material UI components
+- **OAuth2/OIDC** - Keycloak authentication via angular-oauth2-oidc
+- **GraphQL** - BAMOE Data Index for process visualization
+- **REST APIs** - Spring Boot (read) + Quarkus BAMOE (write/process)
+
+### API Strategy
+```
+┌─────────────────────────────────────────┐
+│ Angular UI                              │
+├─────────────────────────────────────────┤
+│ Read Operations                         │
+│  → Spring Boot API (port 8081)         │
+│  → GraphQL (port 8080/graphql)         │
+│                                         │
+│ Write Operations                        │
+│  → Quarkus BAMOE API (port 8080)       │
+│     - Process start/management          │
+│     - Task operations                   │
+│     - Signal events                     │
+└─────────────────────────────────────────┘
+```
+
+## Critical Patterns
+
+### 1. User Extraction from JWT (Backend-Only)
+
+**✅ DO: Let backend extract user from token**
+
+The backend automatically extracts user info from JWT tokens. **Never send user data from UI!**
+
+```typescript
+// ❌ WRONG - Don't send user info
+const enquiry = {
+  title: this.form.value.title,
+  reporter: {  // ❌ Don't send this!
+    userId: this.currentUser.userId,
+    name: this.currentUser.name,
+    email: this.currentUser.email
+  }
+};
+
+// ✅ CORRECT - Let backend extract from token
+const enquiry = {
+  title: this.form.value.title,
+  // No reporter field - backend adds it from JWT!
+};
+
+this.processService.createEnquiry(enquiry).subscribe();
+```
+
+**Why?**
+- More secure - single source of truth (token)
+- Prevents user spoofing
+- Simpler UI code
+- Backend validates token anyway
+
+### 2. GraphQL for Process Visualization
+
+**✅ DO: Use GraphQL as single source of truth**
+
+```typescript
+export class ProcessVisualizationComponent {
+  
+  loadProcessData(): void {
+    // ✅ ALWAYS use GraphQL for process data
+    this.graphqlService.getProcessInstanceWithVariables(this.processInstanceId)
+      .subscribe({
+        next: (data) => {
+          this.processInstance = data.processInstance;
+          
+          // Extract comments from process variables
+          const enquiry = data.processInstance.variables?.enquiry;
+          this.comments = enquiry?.comments || [];
+          
+          // Extract nodes for visualization
+          this.activeNodes = data.processInstance.nodeInstances
+            ?.filter(n => !n.exit)
+            .map(n => n.nodeId) || [];
+        }
+      });
+  }
+}
+```
+
+**❌ DON'T: Mix GraphQL and REST calls**
+
+```typescript
+// ❌ WRONG - Inconsistent data sources
+loadProcessData() {
+  this.restService.getProcess(id).subscribe(/* ... */);  // REST
+}
+
+loadComments() {
+  this.graphqlService.getProcess(id).subscribe(/* ... */);  // GraphQL
+}
+// Results in: Stale data, race conditions, complexity
+```
+
+### 3. Comments in Process Variables
+
+**Comments are stored in process variables, not separate API:**
+
+```typescript
+// ✅ Get comments from GraphQL process variables
+this.graphqlService.getProcessInstanceWithVariables(id)
+  .subscribe(data => {
+    const enquiry = data.processInstance.variables?.enquiry;
+    this.comments = enquiry?.comments || [];
+  });
+
+// ✅ Add comment via signal endpoint (returns void)
+addComment(text: string): void {
+  this.processService.addProcessComment(this.processInstanceId, text)
+    .pipe(
+      delay(500),  // Wait for backend to update
+      switchMap(() => this.loadProcessData())  // Refresh from GraphQL
+    )
+    .subscribe();
+}
+```
+
+**Key Points:**
+- Comments live in `enquiry.comments[]` in process variables
+- Add via signal: `POST /EnquiryProcess/{id}/comment` (body: `"comment text"`)
+- Refresh data from GraphQL after adding comments (with delay)
+
+### 4. Angular 19 Standalone Components
+
+**✅ DO: Use standalone components**
+
+```typescript
+@Component({
+  selector: 'app-feature',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,      // Import specific Material modules
+    MatButtonModule,
+    ReactiveFormsModule
+  ],
+  template: `...`,
+  styles: [`...`]
+})
+export class FeatureComponent implements OnInit, OnDestroy {
+  // Component logic
+}
+```
+
+**Import only what you need:**
+```typescript
+// ✅ Specific imports
+imports: [MatCardModule, MatButtonModule]
+
+// ❌ Avoid barrel imports when possible
+imports: [MaterialModule]  // If it exists
+```
+
+### 5. Authentication Pattern
+
+**ConfigService for environment-agnostic auth:**
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  constructor(
+    private oauthService: OAuthService,
+    private configService: ConfigService
+  ) {}
+  
+  configure(): Promise<void> {
+    const authConfig: AuthConfig = {
+      issuer: this.configService.getOAuthIssuer(),
+      clientId: this.configService.getOAuthClientId(),
+      redirectUri: window.location.origin,
+      scope: 'openid profile email',
+      responseType: 'code',
+      // ... other config from ConfigService
+    };
+    
+    this.oauthService.configure(authConfig);
+    return this.oauthService.loadDiscoveryDocumentAndTryLogin();
+  }
+  
+  getCurrentUser(): User {
+    const claims = this.oauthService.getIdentityClaims() as any;
+    return {
+      userId: claims?.preferred_username,  // ← Primary key
+      name: claims?.name,
+      email: claims?.email
+    };
+  }
+}
+```
+
+**User model aligned with backend:**
+
+```typescript
+export interface User {
+  userId: string;      // JWT: preferred_username
+  name: string;        // JWT: name
+  email: string;       // JWT: email
+  createdAt?: Date;
+  updatedAt?: Date;
+  roles?: string[];    // Optional, for UI features
+}
+```
+
+### 6. HTTP Interceptor for Token
+
+**Automatic token injection:**
+
+```typescript
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const token = this.oauthService.getAccessToken();
+    
+    if (token && this.shouldAddToken(req.url)) {
+      req = req.clone({
+        setHeaders: { Authorization: `Bearer ${token}` }
+      });
+    }
+    
+    return next.handle(req);
+  }
+  
+  private shouldAddToken(url: string): boolean {
+    // Add token to API calls, not to assets
+    return url.includes('/api/') || url.includes(':8080/');
+  }
+}
+```
+
+### 7. Subscription Management
+
+**Always clean up subscriptions:**
+
+```typescript
+export class MyComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
+  ngOnInit(): void {
+    this.service.getData()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(data => {
+        // Handle data
+      });
+  }
+  
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+```
+
+### 8. Process Visualization
+
+**Activity icons based on BPMN node types:**
+
+```typescript
+getActivityIcon(nodeType: string): string {
+  const iconMap: Record<string, string> = {
+    'StartNode': 'play_circle',
+    'EndNode': 'stop_circle',
+    'HumanTaskNode': 'person',
+    'ActionNode': 'settings_applications',  // Service tasks
+    'RuleSetNode': 'rule',
+    'Join': 'merge',
+    'Split': 'call_split',
+    'ThrowLink': 'arrow_forward',
+    'CatchLink': 'arrow_back'
+  };
+  
+  return iconMap[nodeType] || 'radio_button_checked';
+}
+```
+
+**Process state colors:**
+
+```typescript
+getProcessStateColor(state: number): string {
+  switch (state) {
+    case 0: return 'grey';      // PENDING
+    case 1: return 'primary';   // ACTIVE
+    case 2: return 'accent';    // COMPLETED
+    case 3: return 'warn';      // ABORTED
+    case 4: return 'grey';      // SUSPENDED
+    case 5: return 'warn';      // ERROR
+    default: return 'grey';
+  }
+}
+```
+
+## Service Patterns
+
+### ProcessService (Quarkus BAMOE)
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class ProcessService {
+  private apiUrl = `${this.configService.getApiUrl('bamoeProcess')}/EnquiryProcess`;
+  
+  // Create process instance
+  createEnquiry(enquiry: Partial<Enquiry>): Observable<any> {
+    return this.http.post(`${this.apiUrl}`, { enquiry });
+  }
+  
+  // Signal event (comment)
+  addProcessComment(processInstanceId: string, commentText: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/${processInstanceId}/comment`,
+      JSON.stringify(commentText),  // ← Send as JSON string!
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  
+  // Abort process
+  abortProcess(processInstanceId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${processInstanceId}`);
+  }
+}
+```
+
+### GraphQLService (BAMOE Data Index)
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class GraphQLService {
+  private graphqlUrl = `${this.configService.getApiUrl('bamoeProcess')}/graphql`;
+  
+  getProcessInstanceWithVariables(id: string): Observable<any> {
+    const query = `
+      query GetProcessInstance($id: String!) {
+        ProcessInstances(where: { id: { equal: $id } }) {
+          id
+          processId
+          processName
+          state
+          start
+          end
+          businessKey
+          variables
+          nodes {
+            id
+            name
+            type
+            enter
+            exit
+          }
+        }
+      }
+    `;
+    
+    return this.http.post(this.graphqlUrl, {
+      query,
+      variables: { id }
+    }).pipe(
+      map((response: any) => ({
+        processInstance: response.data?.ProcessInstances?.[0]
+      }))
+    );
+  }
+}
+```
+
+### EnquiryService (Spring Boot - Read Only)
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class EnquiryService {
+  private apiUrl = `${this.configService.getApiUrl('enquiryService')}/enquiries`;
+  
+  // Read operations only
+  getEnquiries(): Observable<Enquiry[]> {
+    return this.http.get<Enquiry[]>(this.apiUrl);
+  }
+  
+  getEnquiry(id: string): Observable<Enquiry> {
+    return this.http.get<Enquiry>(`${this.apiUrl}/${id}`);
+  }
+  
+  // ❌ DON'T: Write operations through Spring Boot
+  // All writes go through BAMOE process!
+}
+```
+
+## Material Design Patterns
+
+### Cards with Actions
+
+```typescript
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>{{ title }}</mat-card-title>
+    <mat-card-subtitle>{{ subtitle }}</mat-card-subtitle>
+  </mat-card-header>
+  
+  <mat-card-content>
+    <!-- Content -->
+  </mat-card-content>
+  
+  <mat-card-actions align="end">
+    <button mat-button color="primary">Action</button>
+  </mat-card-actions>
+</mat-card>
+```
+
+### Status Chips
+
+```typescript
+<mat-chip-set>
+  <mat-chip [class]="'status-' + enquiry.status.toLowerCase()">
+    {{ enquiry.status }}
+  </mat-chip>
+</mat-chip-set>
+
+<!-- CSS -->
+.status-open { background-color: #4caf50; color: white; }
+.status-in_progress { background-color: #2196f3; color: white; }
+.status-resolved { background-color: #ff9800; color: white; }
+.status-closed { background-color: #9e9e9e; color: white; }
+```
+
+### Compact Lists
+
+```typescript
+<mat-list>
+  <mat-list-item *ngFor="let item of items" 
+                 (click)="onSelect(item)"
+                 class="clickable-item">
+    <div class="item-row">
+      <div class="item-status-bar" [class]="'status-' + item.status"></div>
+      <div class="item-content">
+        <span class="item-title">{{ item.title }}</span>
+        <span class="item-meta">{{ item.createdAt | date }}</span>
+      </div>
+    </div>
+  </mat-list-item>
+</mat-list>
+
+<!-- CSS for single-row compact display -->
+.item-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.item-content {
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+}
+```
+
+## Configuration Service Pattern
+
+**Central configuration access:**
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class ConfigService {
+  private config = environment;
+  
+  getApiUrl(service: 'enquiryService' | 'bamoeProcess'): string {
+    return this.config.apiUrls[service];
+  }
+  
+  getOAuthIssuer(): string {
+    return this.config.auth.issuer;
+  }
+  
+  getOAuthClientId(): string {
+    return this.config.auth.clientId;
+  }
+  
+  isFeatureEnabled(feature: string): boolean {
+    return this.config.features?.[feature] ?? false;
+  }
+}
+```
+
+**Environment files:**
+
+```typescript
+// environment.ts
+export const environment = {
+  production: false,
+  apiUrls: {
+    enquiryService: 'http://localhost:8081/api',
+    bamoeProcess: 'http://localhost:8080'
+  },
+  auth: {
+    issuer: 'http://localhost:9180/realms/quarkus-realm',
+    clientId: 'quarkus-bamoe-frontend'
+  }
+};
+```
+
+## Error Handling
+
+**Consistent error display:**
+
+```typescript
+export class MyComponent {
+  constructor(private snackBar: MatSnackBar) {}
+  
+  handleError(error: any, operation: string): void {
+    console.error(`${operation} failed:`, error);
+    
+    const message = error.error?.message || 
+                   error.message || 
+                   `${operation} failed`;
+    
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      panelClass: ['error-snackbar']
+    });
+  }
+}
+```
+
+## Routing Patterns
+
+**Route guards:**
+
+```typescript
+export const routes: Routes = [
+  {
+    path: '',
+    component: HomeComponent
+  },
+  {
+    path: 'enquiries',
+    component: EnquiryListComponent,
+    canActivate: [authGuard]  // Protect routes
+  },
+  {
+    path: 'enquiries/:id',
+    component: EnquiryDetailComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'tasks',
+    component: TaskListComponent,
+    canActivate: [authGuard]
+  }
+];
+```
+
+**Auth guard:**
+
+```typescript
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  
+  if (authService.isAuthenticated()) {
+    return true;
+  }
+  
+  authService.initLoginFlow();
+  return false;
+};
+```
+
+## Common Anti-Patterns
+
+### ❌ DON'T: Send user info from UI
+
+```typescript
+// ❌ WRONG
+const data = {
+  title: 'Issue',
+  reporter: this.currentUser  // Backend gets this from token!
+};
+```
+
+### ❌ DON'T: Mix REST and GraphQL for same data
+
+```typescript
+// ❌ WRONG - Inconsistent sources
+loadData() {
+  this.rest.getProcess(id);      // Stale
+  this.graphql.getProcess(id);   // Fresh
+}
+```
+
+### ❌ DON'T: Update via Spring Boot
+
+```typescript
+// ❌ WRONG - Spring Boot is read-only!
+updateEnquiry(enquiry: Enquiry) {
+  return this.http.put(`${springBootUrl}/enquiries/${id}`, enquiry);
+}
+
+// ✅ CORRECT - Updates via BAMOE process
+updateEnquiry(enquiry: Enquiry) {
+  return this.processService.signalEnquiryUpdate(processId, enquiry);
+}
+```
+
+### ❌ DON'T: Forget to unsubscribe
+
+```typescript
+// ❌ WRONG - Memory leak!
+ngOnInit() {
+  this.service.getData().subscribe(data => {
+    this.data = data;
+  });
+}
+
+// ✅ CORRECT
+private destroy$ = new Subject<void>();
+
+ngOnInit() {
+  this.service.getData()
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(data => this.data = data);
+}
+
+ngOnDestroy() {
+  this.destroy$.next();
+  this.destroy$.complete();
+}
+```
+
+### ❌ DON'T: Hardcode URLs
+
+```typescript
+// ❌ WRONG
+private apiUrl = 'http://localhost:8080';
+
+// ✅ CORRECT
+private apiUrl = this.configService.getApiUrl('bamoeProcess');
+```
+
+## Best Practices
+
+### 1. Type Safety
+```typescript
+// Define interfaces for all data models
+export interface Enquiry {
+  id?: string;
+  title: string;
+  description: string;
+  status: EnquiryStatus;
+  type: EnquiryType;
+  priority: Priority;
+  reporter?: User;
+  assignee?: User;
+  comments?: Comment[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export enum EnquiryStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED'
+}
+```
+
+### 2. Reactive Forms
+```typescript
+createForm(): FormGroup {
+  return this.fb.group({
+    title: ['', [Validators.required, Validators.minLength(3)]],
+    description: ['', Validators.required],
+    type: ['', Validators.required],
+    priority: ['MEDIUM', Validators.required]
+  });
+}
+```
+
+### 3. Loading States
+```typescript
+export class MyComponent {
+  loading = false;
+  
+  loadData(): void {
+    this.loading = true;
+    
+    this.service.getData()
+      .pipe(
+        finalize(() => this.loading = false),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: data => this.data = data,
+        error: err => this.handleError(err)
+      });
+  }
+}
+```
+
+### 4. Conditional Rendering
+```typescript
+<div *ngIf="loading" class="loading-spinner">
+  <mat-spinner></mat-spinner>
+</div>
+
+<div *ngIf="!loading && data" class="content">
+  <!-- Content -->
+</div>
+
+<div *ngIf="!loading && !data" class="no-data">
+  <p>No data available</p>
+</div>
+```
+
+### 5. Date Formatting
+```typescript
+<!-- Use built-in pipes -->
+{{ enquiry.createdAt | date:'short' }}
+{{ enquiry.updatedAt | date:'MMM d, y, h:mm a' }}
+```
+
+## Testing Patterns
+
+### Component Testing
+```typescript
+describe('EnquiryListComponent', () => {
+  let component: EnquiryListComponent;
+  let fixture: ComponentFixture<EnquiryListComponent>;
+  let mockEnquiryService: jasmine.SpyObj<EnquiryService>;
+  
+  beforeEach(async () => {
+    mockEnquiryService = jasmine.createSpyObj('EnquiryService', ['getEnquiries']);
+    
+    await TestBed.configureTestingModule({
+      imports: [EnquiryListComponent],
+      providers: [
+        { provide: EnquiryService, useValue: mockEnquiryService }
+      ]
+    }).compileComponents();
+    
+    fixture = TestBed.createComponent(EnquiryListComponent);
+    component = fixture.componentInstance;
+  });
+  
+  it('should load enquiries on init', () => {
+    const mockEnquiries: Enquiry[] = [/* ... */];
+    mockEnquiryService.getEnquiries.and.returnValue(of(mockEnquiries));
+    
+    component.ngOnInit();
+    
+    expect(component.enquiries).toEqual(mockEnquiries);
+  });
+});
+```
+
+## Performance Optimization
+
+### 1. OnPush Change Detection
+```typescript
+@Component({
+  selector: 'app-enquiry-list',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // ...
+})
+```
+
+### 2. TrackBy Functions
+```typescript
+<mat-list-item *ngFor="let item of items; trackBy: trackById">
+  {{ item.name }}
+</mat-list-item>
+
+trackById(index: number, item: any): any {
+  return item.id;
+}
+```
+
+### 3. Lazy Loading
+```typescript
+export const routes: Routes = [
+  {
+    path: 'admin',
+    loadComponent: () => import('./features/admin/admin.component')
+      .then(m => m.AdminComponent)
+  }
+];
+```
+
+## Debugging Tips
+
+### 1. GraphQL Queries
+Test queries in GraphQL playground: `http://localhost:8080/q/graphql-ui/`
+
+### 2. Network Inspection
+Check browser DevTools → Network tab for:
+- Token in Authorization header
+- Correct API endpoints
+- Response payloads
+
+### 3. Console Logging
+```typescript
+console.log('Process data:', data);
+console.log('Current user:', this.authService.getCurrentUser());
+console.log('Comments:', this.comments);
+```
+
+## References
+
+- **Angular**: https://angular.dev/
+- **Angular Material**: https://material.angular.io/
+- **angular-oauth2-oidc**: https://github.com/manfredsteyer/angular-oauth2-oidc
+- **BAMOE Data Index GraphQL**: http://localhost:8080/q/graphql-ui/
+- **BAMOE Process API**: http://localhost:8080/q/swagger-ui/
+
+## Migration Notes
+
+This application evolved to use:
+- ✅ Backend-only user extraction (more secure)
+- ✅ GraphQL as single source for process data (consistent)
+- ✅ Comment signal endpoint with refresh pattern (reliable)
+- ✅ Angular 19 standalone components (modern)
+- ✅ ConfigService for all configuration (maintainable)
+
