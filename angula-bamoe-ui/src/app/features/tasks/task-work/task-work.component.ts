@@ -286,25 +286,72 @@ export class TaskWorkComponent implements OnInit {
 
   loadTask(taskId: string): void {
     this.loading = true;
+    console.log('Loading task:', taskId);
+    
+    // First get basic task info to get process instance ID
     this.processService.getTaskById(taskId).subscribe({
       next: (task) => {
+        console.log('Basic task loaded:', task);
+        console.log('Process instance ID:', task.processInstanceId);
+        console.log('External reference ID:', task.externalReferenceId);
+        
         this.task = task;
         
-        // If we have a process instance ID and external reference ID, try to get more details from the process endpoint
-        if (task.processInstanceId && task.externalReferenceId) {
-          this.processService.getProcessTask(task.processInstanceId, task.externalReferenceId).subscribe({
-            next: (processTask) => {
-              // Merge process task data with existing task data, but preserve the original task ID
-              const originalTaskId = this.task!.id;
-              this.task = { ...this.task, ...processTask, id: originalTaskId };
-              this.loading = false;
+        // If we have a process instance ID, get the full process instance data (this has the most up-to-date enquiry info)
+        if (task.processInstanceId) {
+          console.log('Loading process instance data for up-to-date enquiry info...');
+          this.processService.getProcessInstance(task.processInstanceId).subscribe({
+            next: (processInstance) => {
+              console.log('Process instance loaded:', processInstance);
+              console.log('Enquiry from process instance:', processInstance.enquiry);
+              console.log('Enquiry status from process instance:', processInstance.enquiry?.status);
+              
+              // Update the task with the most current enquiry data from process instance
+              if (processInstance.enquiry) {
+                this.task!.variables = { ...this.task!.variables, enquiry: processInstance.enquiry };
+                console.log('Task enquiry data updated from process instance:', this.task!.variables['enquiry']);
+              }
+              
+              // If we also have external reference ID, get the full task details from the process endpoint
+              if (task.externalReferenceId) {
+                console.log('Loading process task details...');
+                this.processService.getProcessTask(task.processInstanceId, task.externalReferenceId).subscribe({
+                  next: (processTask) => {
+                    console.log('Process task loaded:', processTask);
+                    console.log('Enquiry status in process task:', processTask.variables?.['enquiry']?.status);
+                    console.log('Enquiry assignee in process task:', processTask.variables?.['enquiry']?.assignee);
+                    
+                    // Merge process task data with existing task data, but preserve the original task ID and enquiry data
+                    const originalTaskId = this.task!.id;
+                    const currentEnquiry = this.task!.variables?.['enquiry'];
+                    this.task = { ...this.task, ...processTask, id: originalTaskId };
+                    
+                    // Ensure we keep the most up-to-date enquiry data from process instance
+                    if (currentEnquiry) {
+                      this.task!.variables = { ...this.task!.variables, enquiry: currentEnquiry };
+                    }
+                    
+                    console.log('Final merged task:', this.task);
+                    console.log('Final enquiry status:', this.task?.variables?.['enquiry']?.status);
+                    this.loading = false;
+                  },
+                  error: (error) => {
+                    console.warn('Could not load process task details, using process instance data:', error);
+                    this.loading = false;
+                  }
+                });
+              } else {
+                console.log('No external reference ID, using process instance data');
+                this.loading = false;
+              }
             },
             error: (error) => {
-              console.warn('Could not load process task details, using basic task info:', error);
+              console.warn('Could not load process instance, falling back to basic task info:', error);
               this.loading = false;
             }
           });
         } else {
+          console.log('No process instance ID, using basic task info');
           this.loading = false;
         }
       },
@@ -346,7 +393,7 @@ export class TaskWorkComponent implements OnInit {
 
   // Task State Checking Methods
   isTaskReady(): boolean {
-    return this.task?.status === 'READY' && !this.task?.assignee;
+    return (this.task?.status === 'READY' || this.task?.status === 'CREATED') && !this.task?.assignee;
   }
 
   isTaskReserved(): boolean {
@@ -365,11 +412,30 @@ export class TaskWorkComponent implements OnInit {
   // Task Action Methods
   claimTask(): void {
     this.submitting = true;
+    console.log('Claiming task:', this.task!.id);
+    console.log('Current enquiry status before claim:', this.task?.variables?.['enquiry']?.status);
+    console.log('Current task status:', this.task?.status);
+    console.log('Current task assignee:', this.task?.assignee);
+    
+    // Check if task is already claimed
+    if (this.task?.status === 'RESERVED' || this.task?.assignee) {
+      console.log('Task is already claimed, skipping claim operation');
+      this.snackBar.open('Task is already claimed', 'Close', { duration: 3000 });
+      this.submitting = false;
+      return;
+    }
+    
     // Use the task ID directly for claiming
     this.processService.claimTask(this.task!.id).subscribe({
       next: () => {
+        console.log('Task claimed successfully, reloading task data...');
         this.snackBar.open('Task claimed successfully', 'Close', { duration: 3000 });
-        this.loadTask(this.task!.id);
+        // Add a small delay to allow backend processing
+        setTimeout(() => {
+          this.loadTask(this.task!.id);
+          // Also try to refresh enquiry data directly if we have the enquiry ID
+          this.refreshEnquiryData();
+        }, 1000); // Increased delay to 1 second
         this.submitting = false;
       },
       error: (error) => {
@@ -398,10 +464,19 @@ export class TaskWorkComponent implements OnInit {
 
   releaseTask(): void {
     this.submitting = true;
+    console.log('Releasing task:', this.task!.id);
+    console.log('Current enquiry status before release:', this.task?.variables?.['enquiry']?.status);
+    
     this.processService.releaseTask(this.task!.id).subscribe({
       next: () => {
+        console.log('Task released successfully, reloading task data...');
         this.snackBar.open('Task released successfully', 'Close', { duration: 3000 });
-        this.loadTask(this.task!.id);
+        // Add a small delay to allow backend processing
+        setTimeout(() => {
+          this.loadTask(this.task!.id);
+          // Also try to refresh enquiry data directly if we have the enquiry ID
+          this.refreshEnquiryData();
+        }, 1000); // Increased delay to 1 second
         this.submitting = false;
       },
       error: (error) => {
@@ -410,5 +485,34 @@ export class TaskWorkComponent implements OnInit {
         this.submitting = false;
       }
     });
+  }
+
+  private refreshEnquiryData(): void {
+    if (this.task?.processInstanceId) {
+      console.log('Refreshing enquiry data using process instance endpoint...');
+      // Use the process instance endpoint to get fresh variables
+      this.processService.getProcessInstance(this.task.processInstanceId).subscribe({
+        next: (processInstance) => {
+          console.log('Process instance refreshed:', processInstance);
+          if (processInstance.enquiry) {
+            console.log('Updated enquiry from process instance:', processInstance.enquiry);
+            console.log('Enquiry status from process instance:', processInstance.enquiry.status);
+            // Update the task's enquiry data
+            if (this.task) {
+              this.task.variables = { ...this.task.variables, enquiry: processInstance.enquiry };
+              console.log('Task enquiry data updated:', this.task.variables['enquiry']);
+              console.log('Final enquiry status after refresh:', this.task.variables['enquiry']?.status);
+            }
+          } else {
+            console.log('No enquiry found in process instance variables');
+          }
+        },
+        error: (error) => {
+          console.warn('Could not refresh process instance:', error);
+        }
+      });
+    } else {
+      console.log('Cannot refresh enquiry data - missing process instance ID');
+    }
   }
 }

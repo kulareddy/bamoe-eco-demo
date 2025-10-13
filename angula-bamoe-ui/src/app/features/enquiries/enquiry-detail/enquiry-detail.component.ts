@@ -491,12 +491,14 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
 
   private loadEnquiry(id: string): void {
     this.loading = true;
-    // First try to get enquiry by ID (UUID)
-    this.enquiryService.getEnquiryById(id)
+    console.log('Loading enquiry using process instance ID approach:', id);
+    
+    // Use process instance ID approach directly since enquiry data is in BAMOE process
+    this.enquiryService.getEnquiryByProcessInstanceId(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (enquiry) => {
-          console.log('Enquiry received:', enquiry);
+          console.log('Enquiry received from process instance:', enquiry);
           console.log('Reporter:', enquiry.reporter);
           console.log('Reporter Name:', enquiry.reporter?.name);
           console.log('Reporter User ID:', enquiry.reporter?.userId);
@@ -508,23 +510,12 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
           }
           this.enquiry = enquiry;
           this.loadProcessInfo(id);
+          this.loading = false;
         },
         error: (error) => {
-          console.log('Enquiry not found by ID, trying process instance ID:', id);
-          // If not found by ID, try by process instance ID
-          this.enquiryService.getEnquiryByProcessInstanceId(id)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: (enquiry) => {
-                this.enquiry = enquiry;
-                this.loadProcessInfo(id);
-              },
-              error: (processError) => {
-                console.error('Error loading enquiry:', processError);
-                this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
-                this.loading = false;
-              }
-            });
+          console.error('Error loading enquiry by process instance ID:', error);
+          this.loading = false;
+          this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
         }
       });
   }

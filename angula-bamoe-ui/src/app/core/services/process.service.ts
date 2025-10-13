@@ -69,7 +69,11 @@ export class ProcessService {
   }
 
   private mapBamoeTaskToTask(bamoeTask: any): Task {
-    return {
+    console.log('ProcessService.mapBamoeTaskToTask: Mapping BAMOE task:', bamoeTask);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task inputs:', bamoeTask.inputs);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task enquiry:', bamoeTask.inputs?.enquiry);
+    
+    const mappedTask = {
       id: bamoeTask.id,
       name: bamoeTask.taskName,
       description: bamoeTask.taskDescription,
@@ -86,6 +90,12 @@ export class ProcessService {
       // Store the external reference ID for TaskSupport endpoint
       externalReferenceId: bamoeTask.externalReferenceId
     };
+    
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task variables:', mappedTask.variables);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task enquiry:', mappedTask.variables?.['enquiry']);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task enquiry status:', mappedTask.variables?.['enquiry']?.status);
+    
+    return mappedTask;
   }
 
   private mapBamoeStatusToTaskStatus(bamoeStatus: string): any {
@@ -103,9 +113,18 @@ export class ProcessService {
   }
 
   getTaskById(taskId: string): Observable<Task> {
+    console.log('ProcessService.getTaskById: Calling usertasks endpoint:', `${this.apiUrl}/usertasks/instance/${taskId}`);
     return this.http.get<any>(`${this.apiUrl}/usertasks/instance/${taskId}`)
       .pipe(
-        map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask)),
+        map(bamoeTask => {
+          console.log('ProcessService.getTaskById: Raw usertasks response:', bamoeTask);
+          console.log('ProcessService.getTaskById: Enquiry in usertasks response:', bamoeTask.inputs?.enquiry);
+          console.log('ProcessService.getTaskById: Enquiry status in usertasks response:', bamoeTask.inputs?.enquiry?.status);
+          const mappedTask = this.mapBamoeTaskToTask(bamoeTask);
+          console.log('ProcessService.getTaskById: Mapped task:', mappedTask);
+          console.log('ProcessService.getTaskById: Enquiry status in mapped task:', mappedTask.variables?.['enquiry']?.status);
+          return mappedTask;
+        }),
         catchError(error => {
           console.error('Error loading task:', error);
           throw error;
@@ -150,6 +169,11 @@ export class ProcessService {
   getProcessTask(processInstanceId: string, taskId: string): Observable<any> {
     // Use GET endpoint for retrieving TaskSupport task details
     return this.http.get(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/TaskSupport/${taskId}`);
+  }
+
+  getProcessInstance(processInstanceId: string): Observable<any> {
+    // Get the process instance with current variables
+    return this.http.get(`${this.apiUrl}/EnquiryProcess/${processInstanceId}`);
   }
 
   // Generic user task operations (for general usertasks)
