@@ -49,20 +49,6 @@ import { Task } from '../../../core/models/process.model';
             <mat-icon>arrow_back</mat-icon>
             Back to Tasks
           </button>
-          <button mat-raised-button 
-                  color="primary" 
-                  (click)="claimTask()" 
-                  *ngIf="canClaim()">
-            <mat-icon>assignment_ind</mat-icon>
-            Claim Task
-          </button>
-          <button mat-raised-button 
-                  color="warn" 
-                  (click)="releaseTask()" 
-                  *ngIf="canRelease()">
-            <mat-icon>assignment_return</mat-icon>
-            Release Task
-          </button>
         </div>
       </div>
 
@@ -97,6 +83,39 @@ import { Task } from '../../../core/models/process.model';
         </mat-card-content>
       </mat-card>
 
+      <!-- Task Actions -->
+      <mat-card class="actions-card">
+        <mat-card-content>
+          <div class="task-actions-row">
+            <h3 class="task-actions-title">Task Actions</h3>
+            <div class="task-actions-buttons">
+              <button mat-raised-button 
+                      color="primary" 
+                      (click)="claimTask()" 
+                      *ngIf="canClaim()">
+                <mat-icon>assignment_ind</mat-icon>
+                Claim Task
+              </button>
+              <button mat-raised-button 
+                      color="warn" 
+                      (click)="releaseTask()" 
+                      *ngIf="canRelease()">
+                <mat-icon>assignment_return</mat-icon>
+                Release Task
+              </button>
+              <button mat-raised-button 
+                      color="accent" 
+                      (click)="completeTask()" 
+                      *ngIf="canComplete() && taskForm"
+                      [disabled]="completing">
+                <mat-icon>check_circle</mat-icon>
+                {{ completing ? 'Completing...' : 'Complete Task' }}
+              </button>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
       <!-- Task Form -->
       <mat-card class="form-card" *ngIf="taskForm && canComplete()">
         <mat-card-header>
@@ -124,12 +143,7 @@ import { Task } from '../../../core/models/process.model';
             </div>
             
             <div class="form-actions">
-              <button mat-raised-button 
-                      color="primary" 
-                      type="submit" 
-                      [disabled]="completing">
-                {{ completing ? 'Completing...' : 'Complete Task' }}
-              </button>
+              <!-- Complete Task button moved to Task Actions section -->
             </div>
           </form>
         </mat-card-content>
@@ -187,8 +201,63 @@ import { Task } from '../../../core/models/process.model';
       gap: 8px;
     }
 
-    .info-card, .form-card, .variables-card {
+    .info-card, .actions-card, .form-card, .variables-card {
       margin-bottom: 24px;
+    }
+
+    .actions-card {
+      background-color: #f8f9fa;
+      border-left: 4px solid #3f51b5;
+    }
+
+    .task-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .task-actions-title {
+      margin: 0;
+      color: #3f51b5;
+      font-size: 18px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .task-actions-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+
+    .task-actions-buttons button {
+      min-width: 140px;
+      flex-shrink: 0;
+    }
+
+    .task-actions-buttons button mat-icon {
+      margin-right: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .task-actions-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      
+      .task-actions-buttons {
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+      }
+      
+      .task-actions-buttons button {
+        min-width: 120px;
+        flex: 1;
+      }
     }
 
     .detail-field {

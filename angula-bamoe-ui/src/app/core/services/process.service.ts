@@ -72,6 +72,10 @@ export class ProcessService {
     console.log('ProcessService.mapBamoeTaskToTask: Mapping BAMOE task:', bamoeTask);
     console.log('ProcessService.mapBamoeTaskToTask: BAMOE task inputs:', bamoeTask.inputs);
     console.log('ProcessService.mapBamoeTaskToTask: BAMOE task enquiry:', bamoeTask.inputs?.enquiry);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task status:', bamoeTask.status);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task actualOwner:', bamoeTask.actualOwner);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task potentialGroups:', bamoeTask.potentialGroups);
+    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task potentialUsers:', bamoeTask.potentialUsers);
     
     const mappedTask = {
       id: bamoeTask.id,
@@ -91,9 +95,11 @@ export class ProcessService {
       externalReferenceId: bamoeTask.externalReferenceId
     };
     
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task variables:', mappedTask.variables);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task enquiry:', mappedTask.variables?.['enquiry']);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task enquiry status:', mappedTask.variables?.['enquiry']?.status);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task:', mappedTask);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task status:', mappedTask.status);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task assignee:', mappedTask.assignee);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task candidateGroups:', mappedTask.candidateGroups);
+    console.log('ProcessService.mapBamoeTaskToTask: Mapped task candidateUsers:', mappedTask.candidateUsers);
     
     return mappedTask;
   }

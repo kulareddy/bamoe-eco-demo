@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
 import { RouterModule, Router } from '@angular/router';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 
 import { ProcessService } from '../../../core/services/process.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -21,7 +22,8 @@ import { Task } from '../../../core/models/process.model';
     MatIconModule,
     MatChipsModule,
     MatCardModule,
-    RouterModule
+    RouterModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="task-list-container">
@@ -75,34 +77,6 @@ import { Task } from '../../../core/models/process.model';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let task">
-              <!-- Ready State: Show Claim button -->
-              <button mat-raised-button 
-                      color="primary"
-                      (click)="claimTask(task)" 
-                      *ngIf="isTaskReady(task)"
-                      title="Claim Task">
-                <mat-icon>assignment_ind</mat-icon>
-                Claim Task
-              </button>
-              
-              <!-- In Progress State: Show Complete button -->
-              <button mat-raised-button 
-                      color="primary"
-                      (click)="completeTask(task)" 
-                      *ngIf="isTaskInProgress(task)"
-                      title="Complete Task">
-                <mat-icon>check_circle</mat-icon>
-                Complete
-              </button>
-              
-              <!-- Release button for reserved/in-progress tasks -->
-              <button mat-icon-button 
-                      (click)="releaseTask(task)" 
-                      *ngIf="canRelease(task)"
-                      title="Release Task">
-                <mat-icon>assignment_return</mat-icon>
-              </button>
-              
               <!-- View button for all states -->
               <button mat-icon-button 
                       [routerLink]="['/tasks', task.id]" 
@@ -207,7 +181,8 @@ export class TaskListComponent implements OnInit {
   constructor(
     private processService: ProcessService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -230,64 +205,6 @@ export class TaskListComponent implements OnInit {
     });
   }
 
-  canClaim(task: Task): boolean {
-    return !task.assignee && (
-      task.candidateUsers?.includes(this.authService.getUsername()) ||
-      task.candidateGroups?.some(group => this.authService.hasRole(group))
-    ) || false;
-  }
-
-  canRelease(task: Task): boolean {
-    return task.assignee === this.authService.getUsername();
-  }
-
-  claimTask(task: Task): void {
-    // Use process-specific endpoint for TaskSupport tasks
-    if (task.processInstanceId) {
-      this.processService.claimProcessTask(task.processInstanceId, task.id).subscribe({
-        next: () => {
-          this.loadTasks(); // Refresh the list
-        },
-        error: (error) => {
-          console.error('Error claiming task:', error);
-          this.handleTaskClaimError(error, task);
-        }
-      });
-    } else {
-      // Fallback to generic usertasks endpoint
-      this.processService.claimTask(task.id).subscribe({
-        next: () => {
-          this.loadTasks(); // Refresh the list
-        },
-        error: (error) => {
-          console.error('Error claiming task:', error);
-          this.handleTaskClaimError(error, task);
-        }
-      });
-    }
-  }
-
-  private handleTaskClaimError(error: any, task: Task): void {
-    if (error.status === 404) {
-      console.warn(`Task ${task.id} not found. It may have been completed or cancelled.`);
-      // Refresh the task list to remove the non-existent task
-      this.loadTasks();
-    } else {
-      console.error('Error claiming task:', error);
-    }
-  }
-
-  releaseTask(task: Task): void {
-    // Use generic usertasks endpoint for releasing
-    this.processService.releaseTask(task.id).subscribe({
-      next: () => {
-        this.loadTasks(); // Refresh the list
-      },
-      error: (error) => {
-        console.error('Error releasing task:', error);
-      }
-    });
-  }
 
   getPriorityClass(priority: number): string {
     if (priority >= 8) return 'priority-chip critical';
@@ -322,42 +239,4 @@ export class TaskListComponent implements OnInit {
     return `status-${statusStr}`;
   }
 
-  // Task State Checking Methods
-  isTaskReady(task: Task): boolean {
-    return task.status === 'READY' && !task.assignee;
-  }
-
-  isTaskReserved(task: Task): boolean {
-    return task.status === 'RESERVED' && task.assignee === this.authService.getUsername();
-  }
-
-  isTaskInProgress(task: Task): boolean {
-    return task.status === 'IN_PROGRESS' && task.assignee === this.authService.getUsername();
-  }
-
-  // Task Action Methods
-
-  completeTask(task: Task): void {
-    // Use process-specific endpoint for TaskSupport tasks
-    if (task.processInstanceId) {
-      this.processService.completeProcessTask(task.processInstanceId, task.id).subscribe({
-        next: () => {
-          this.loadTasks(); // Refresh the list
-        },
-        error: (error) => {
-          console.error('Error completing task:', error);
-        }
-      });
-    } else {
-      // Fallback to generic usertasks endpoint
-      this.processService.completeTask(task.id).subscribe({
-        next: () => {
-          this.loadTasks(); // Refresh the list
-        },
-        error: (error) => {
-          console.error('Error completing task:', error);
-        }
-      });
-    }
-  }
 }

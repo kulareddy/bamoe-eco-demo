@@ -8,6 +8,8 @@ export interface Enquiry {
   reporter?: User; // The user who reported the enquiry
   assignee?: User; // Maps to assignedTo
   assignedTo?: User; // Alternative name for assignee
+  candidateGroups?: string[]; // Groups that can be assigned to this enquiry
+  candidateUsers?: string[]; // Users that can be assigned to this enquiry
   resolutionNotes?: string;
   comments?: Comment[];
   createdAt?: Date;

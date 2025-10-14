@@ -13,11 +13,13 @@ import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angu
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { Inject } from '@angular/core';
 
 import { EnquiryService } from '../../../core/services/enquiry.service';
 import { ProcessService } from '../../../core/services/process.service';
+import { GraphQLService } from '../../../core/services/graphql.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Enquiry, EnquiryStatus } from '../../../core/models/enquiry.model';
 import { ProcessInstance, Task } from '../../../core/models/process.model';
@@ -99,6 +101,7 @@ export class NotesDialogComponent {
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
+    RouterModule,
     ProcessVisualizationComponent
   ],
   template: `
@@ -351,6 +354,7 @@ export class NotesDialogComponent {
     }
 
 
+
     .error-container {
       text-align: center;
       padding: 60px 20px;
@@ -469,6 +473,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     private router: Router,
     private enquiryService: EnquiryService,
     private processService: ProcessService,
+    private graphqlService: GraphQLService,
     private authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
@@ -491,14 +496,15 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
 
   private loadEnquiry(id: string): void {
     this.loading = true;
-    console.log('Loading enquiry using process instance ID approach:', id);
+    console.log('Loading enquiry by ID:', id);
     
-    // Use process instance ID approach directly since enquiry data is in BAMOE process
-    this.enquiryService.getEnquiryByProcessInstanceId(id)
+    // Use enquiry ID directly - let Spring Boot API handle the mapping
+    this.enquiryService.getEnquiryById(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (enquiry) => {
-          console.log('Enquiry received from process instance:', enquiry);
+          console.log('Enquiry received by ID:', enquiry);
+          console.log('Process Instance ID:', enquiry.processInstanceId);
           console.log('Reporter:', enquiry.reporter);
           console.log('Reporter Name:', enquiry.reporter?.name);
           console.log('Reporter User ID:', enquiry.reporter?.userId);
@@ -508,12 +514,16 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
           if (!enquiry.reporter?.name) {
             console.warn('No reporter name found in enquiry:', enquiry);
           }
+          
           this.enquiry = enquiry;
+          
+          // Use enquiry ID for process info - Spring Boot will handle the mapping
           this.loadProcessInfo(id);
+          
           this.loading = false;
         },
         error: (error) => {
-          console.error('Error loading enquiry by process instance ID:', error);
+          console.error('Error loading enquiry by ID:', error);
           this.loading = false;
           this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
         }
@@ -521,14 +531,15 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadProcessInfo(enquiryId: string): void {
-    // Use the process instance ID directly from the enquiry object
+    // Use enquiry ID - Spring Boot API will handle the mapping to process instance
     if (this.enquiry?.processInstanceId) {
       this.processService.getProcessById(this.enquiry.processInstanceId)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (process) => {
             this.processInstance = process;
-            this.loadTasks(process.id);
+            // Load tasks from GraphQL data instead of separate API call
+            this.loadTasksFromGraphQL(process.id);
             this.loading = false;
           },
           error: (error) => {
@@ -537,37 +548,52 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
           }
         });
     } else {
-      // Fallback: try to find process by enquiry ID in variables
-      this.processService.getAllProcesses()
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (processes) => {
-            const process = processes.find(p => p.variables?.['enquiryId'] === enquiryId);
-            if (process) {
-              this.processInstance = process;
-              this.loadTasks(process.id);
-            }
-            this.loading = false;
-          },
-          error: (error) => {
-            console.error('Error loading process info:', error);
-            this.loading = false;
-          }
-        });
+      console.warn('No process instance ID found in enquiry');
+      this.loading = false;
     }
   }
 
-  private loadTasks(processId: string): void {
-    this.processService.getProcessTasks(processId)
+  private loadTasksFromGraphQL(processId: string): void {
+    // Use GraphQL to get task data directly from process visualization
+    this.graphqlService.getProcessVisualizationData(processId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (tasks) => {
-          this.tasks = tasks;
+        next: (data: any) => {
+          // Extract user tasks from GraphQL response
+          const userTasks = data?.userTasks || [];
+          this.tasks = userTasks.map((task: any) => ({
+            id: task.id,
+            name: task.name || 'Task',
+            description: task.description || '',
+            status: this.mapGraphQLTaskState(task.state),
+            assignee: task.actualOwner || null,
+            processInstanceId: processId,
+            created: task.started ? new Date(task.started) : new Date(),
+            due: task.completed ? new Date(task.completed) : undefined,
+            priority: 0,
+            formKey: undefined,
+            variables: {},
+            externalReferenceId: undefined
+          }));
         },
-        error: (error) => {
-          console.error('Error loading tasks:', error);
+        error: (error: any) => {
+          console.error('Error loading tasks from GraphQL:', error);
+          this.tasks = [];
         }
       });
+  }
+
+  private mapGraphQLTaskState(state: string): string {
+    // Map GraphQL task states to our frontend states
+    switch (state?.toLowerCase()) {
+      case 'ready': return 'READY';
+      case 'reserved': return 'RESERVED';
+      case 'inprogress': return 'IN_PROGRESS';
+      case 'completed': return 'COMPLETED';
+      case 'failed': return 'FAILED';
+      case 'error': return 'ERROR';
+      default: return state || 'UNKNOWN';
+    }
   }
 
   goBack(): void {
@@ -589,6 +615,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     if (!status) return 'task-unknown';
     return `task-${status.toLowerCase().replace('_', '-')}`;
   }
+
 
   // State Management Operations (via BAMOE Process Service)
   cancelEnquiry(): void {

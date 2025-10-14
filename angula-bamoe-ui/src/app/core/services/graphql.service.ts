@@ -24,6 +24,22 @@ export interface ProcessVisualizationData {
     endTime?: string;   // GraphQL returns as string, will be converted to Date
     assignee?: string;
   }>;
+  userTasks: Array<{
+    id: string;
+    name: string;
+    description: string;
+    state: string;
+    actualOwner?: string;
+    started?: string;
+    completed?: string;
+    lastUpdate: string;
+    comments: Array<{
+      id: string;
+      content: string;
+      updatedBy: string;
+      updatedAt: string;
+    }>;
+  }>;
   history: Array<{
     id: string;
     description: string;
@@ -197,6 +213,17 @@ export class GraphQLService {
             endTime: node.exit,
             assignee: node.actualOwner
           })) || [],
+          userTasks: userTasks.map((task: any) => ({
+            id: task.id,
+            name: task.name,
+            description: task.description,
+            state: task.state,
+            actualOwner: task.actualOwner,
+            started: task.started,
+            completed: task.completed,
+            lastUpdate: task.lastUpdate,
+            comments: task.comments || []
+          })),
           history: userTasks.map((task: any) => ({
             id: task.id,
             description: task.description,

@@ -11,8 +11,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.kie.kogito.internal.process.runtime.KogitoProcessContext;
-import org.kie.kogito.process.ProcessInstance;
-import java.lang.reflect.Field;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,97 +66,61 @@ public class EnquiryService {
     }
 
     /**
-     * Handle task claim - Kogito-native version using ProcessInstance API.
-     * Called from event listeners when tasks are claimed by users.
+     * Handle task claim - update enquiry status to IN_PROGRESS
+     * @param enquiry The enquiry to update
+     * @param assignee The user claiming the task
+     * @return Updated enquiry object
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public void handleTaskClaim(ProcessInstance<?> processInstance, String userId) {
-        LOG.info("EnquiryService.handleTaskClaim: Task claimed - updating enquiry by user: {}", userId);
-        LOG.info("EnquiryService.handleTaskClaim: Process instance ID: {}", processInstance.id());
-        
-        // Get the process model directly
-        Object processModel = processInstance.variables();
-        LOG.debug("EnquiryService.handleTaskClaim: Process model type: {}", processModel.getClass().getName());
-        
-        // Use reflection to get the enquiry field
-        Enquiry enquiry = getEnquiryFromModel(processModel);
-        if (enquiry == null) {
-            LOG.warn("EnquiryService.handleTaskClaim: No enquiry found in process variables");
-            return;
-        }
+    public Enquiry handleTaskClaim(Enquiry enquiry, User assignee) {
+        LOG.info("EnquiryService.handleTaskClaim: Updating enquiry status to IN_PROGRESS for user: {}", 
+                assignee != null ? assignee.getUserId() : "unknown");
 
-        LOG.info("EnquiryService.handleTaskClaim: Found enquiry: {} - current status: {}", enquiry.getTitle(), enquiry.getStatus());
-        LOG.info("EnquiryService.handleTaskClaim: Enquiry ID: {}", enquiry.getId());
-
-        enquiry.setAssignee(userProvider.getUserById(userId));
+        // Update enquiry status and assignee
         enquiry.setStatus(EnquiryStatus.IN_PROGRESS);
-        
-        LOG.info("EnquiryService.handleTaskClaim: Updated enquiry - Status: {}, Assignee: {}", enquiry.getStatus(), enquiry.getAssignee());
+        enquiry.setAssignee(assignee);
+        enquiry.setUpdatedAt(LocalDateTime.now());
 
-        // Update the enquiry in the external service
+        LOG.info("EnquiryService.handleTaskClaim: Updated enquiry - Status: {}, Assignee: {}", 
+                enquiry.getStatus(), enquiry.getAssignee());
+
         try {
             LOG.info("EnquiryService.handleTaskClaim: Updating enquiry in external service...");
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
             LOG.info("EnquiryService.handleTaskClaim: Successfully updated enquiry in external service - Status: {}, Assignee: {}", 
-                updatedEnquiry.getStatus(), updatedEnquiry.getAssignee());
+                    updatedEnquiry.getStatus(), updatedEnquiry.getAssignee());
+            return updatedEnquiry;
         } catch (Exception e) {
-            LOG.error("EnquiryService.handleTaskClaim: Failed to update enquiry in external service", e);
+            LOG.warn("EnquiryService.handleTaskClaim: Failed to update enquiry in external service: {}", e.getMessage());
+            return enquiry;
         }
-
-        // Update the enquiry in the process model
-        setEnquiryInModel(processModel, enquiry);
-        
-        // Update the process instance
-        ((ProcessInstance) processInstance).updateVariables(processModel);
-        
-        LOG.info("EnquiryService.handleTaskClaim: Successfully updated process instance with enquiry changes");
     }
     
     /**
-     * Handle task release - Kogito-native version using ProcessInstance API.
-     * Called from event listeners when tasks are released back to the group pool.
+     * Handle task release - update enquiry status to OPEN
+     * @param enquiry The enquiry to update
+     * @return Updated enquiry object
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public void handleTaskRelease(ProcessInstance<?> processInstance) {
-        LOG.info("EnquiryService.handleTaskRelease: Task released - updating enquiry");
-        LOG.info("EnquiryService.handleTaskRelease: Process instance ID: {}", processInstance.id());
-        
-        // Get the process model directly
-        Object processModel = processInstance.variables();
-        LOG.debug("EnquiryService.handleTaskRelease: Process model type: {}", processModel.getClass().getName());
-        
-        // Use reflection to get the enquiry field
-        Enquiry enquiry = getEnquiryFromModel(processModel);
-        if (enquiry == null) {
-            LOG.warn("EnquiryService.handleTaskRelease: No enquiry found in process variables");
-            return;
-        }
+    public Enquiry handleTaskRelease(Enquiry enquiry) {
+        LOG.info("EnquiryService.handleTaskRelease: Updating enquiry status to OPEN");
 
-        LOG.info("EnquiryService.handleTaskRelease: Found enquiry: {} - current status: {}", enquiry.getTitle(), enquiry.getStatus());
-        LOG.info("EnquiryService.handleTaskRelease: Enquiry ID: {}", enquiry.getId());
-
-        enquiry.setAssignee(null);
+        // Update enquiry status and clear assignee
         enquiry.setStatus(EnquiryStatus.OPEN);
-        
-        LOG.info("EnquiryService.handleTaskRelease: Updated enquiry - Status: {}, Assignee: {}", enquiry.getStatus(), enquiry.getAssignee());
+        enquiry.setAssignee(null);
+        enquiry.setUpdatedAt(LocalDateTime.now());
 
-        // Update the enquiry in the external service
+        LOG.info("EnquiryService.handleTaskRelease: Updated enquiry - Status: {}, Assignee: {}", 
+                enquiry.getStatus(), enquiry.getAssignee());
+
         try {
             LOG.info("EnquiryService.handleTaskRelease: Updating enquiry in external service...");
             Enquiry updatedEnquiry = enquiryGateway.updateEnquiry(enquiry.getId().toString(), enquiry);
             LOG.info("EnquiryService.handleTaskRelease: Successfully updated enquiry in external service - Status: {}, Assignee: {}", 
-                updatedEnquiry.getStatus(), updatedEnquiry.getAssignee());
+                    updatedEnquiry.getStatus(), updatedEnquiry.getAssignee());
+            return updatedEnquiry;
         } catch (Exception e) {
-            LOG.error("EnquiryService.handleTaskRelease: Failed to update enquiry in external service", e);
+            LOG.warn("EnquiryService.handleTaskRelease: Failed to update enquiry in external service: {}", e.getMessage());
+            return enquiry;
         }
-
-        // Update the enquiry in the process model
-        setEnquiryInModel(processModel, enquiry);
-        
-        // Update the process instance
-        ((ProcessInstance) processInstance).updateVariables(processModel);
-        
-        LOG.info("EnquiryService.handleTaskRelease: Successfully updated process instance with enquiry changes");
     }
 
 
@@ -325,30 +287,4 @@ public class EnquiryService {
         }
     }
     
-    /**
-     * Extract enquiry from the generated process model using reflection.
-     */
-    private Enquiry getEnquiryFromModel(Object processModel) {
-        try {
-            Field enquiryField = processModel.getClass().getDeclaredField("enquiry");
-            enquiryField.setAccessible(true);
-            return (Enquiry) enquiryField.get(processModel);
-        } catch (Exception e) {
-            LOG.error("Failed to extract enquiry from process model", e);
-            return null;
-        }
-    }
-    
-    /**
-     * Update enquiry in the generated process model using reflection.
-     */
-    private void setEnquiryInModel(Object processModel, Enquiry updatedEnquiry) {
-        try {
-            Field enquiryField = processModel.getClass().getDeclaredField("enquiry");
-            enquiryField.setAccessible(true);
-            enquiryField.set(processModel, updatedEnquiry);
-        } catch (Exception e) {
-            LOG.error("Failed to update enquiry in process model", e);
-        }
-    }
 }

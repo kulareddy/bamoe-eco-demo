@@ -171,6 +171,18 @@ export class AuthService implements IAuthService {
   }
 
   private extractGroups(claims: any): string[] {
+    // Handle different group claim structures based on provider
+    if (this.appAuthConfig?.provider === AuthProvider.KEYCLOAK) {
+      // Keycloak might store groups in different claims
+      return claims['groups'] || 
+             claims['realm_access']?.groups || 
+             claims['resource_access']?.[this.appAuthConfig.clientId]?.groups ||
+             [];
+    } else if (this.appAuthConfig?.provider === AuthProvider.ENTRA_ID) {
+      return claims['groups'] || [];
+    } else if (this.appAuthConfig?.provider === AuthProvider.AUTH0) {
+      return claims['https://yourapp.com/groups'] || claims['groups'] || [];
+    }
     return claims['groups'] || [];
   }
 

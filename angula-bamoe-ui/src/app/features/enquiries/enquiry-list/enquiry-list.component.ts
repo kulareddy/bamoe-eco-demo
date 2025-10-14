@@ -113,9 +113,22 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
             <td mat-cell *matCellDef="let enquiry">{{ enquiry.reporter?.name || 'Unknown' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="createdAt">
-            <th mat-header-cell *matHeaderCellDef>Created</th>
-            <td mat-cell *matCellDef="let enquiry">{{ enquiry.createdAt | date:'short' }}</td>
+          <ng-container matColumnDef="assignedTo">
+            <th mat-header-cell *matHeaderCellDef>Assigned To</th>
+            <td mat-cell *matCellDef="let enquiry">
+              <span *ngIf="enquiry.assignee || enquiry.assignedTo; else checkGroup">
+                {{ (enquiry.assignee || enquiry.assignedTo)?.name || 'Unknown' }}
+              </span>
+              <ng-template #checkGroup>
+                <span *ngIf="enquiry.candidateGroups && enquiry.candidateGroups.length > 0; else unassigned" class="group-assignment">
+                  {{ enquiry.candidateGroups[0] }}
+                  <span *ngIf="enquiry.candidateGroups.length > 1" class="additional-groups">+{{ enquiry.candidateGroups.length - 1 }}</span>
+                </span>
+                <ng-template #unassigned>
+                  <span class="unassigned-text">Unassigned</span>
+                </ng-template>
+              </ng-template>
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
@@ -261,13 +274,29 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
       height: 48px;
       margin-bottom: 16px;
     }
+
+    .unassigned-text {
+      color: #999;
+      font-style: italic;
+    }
+
+    .group-assignment {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .additional-groups {
+      color: #999;
+      font-size: 12px;
+      margin-left: 4px;
+    }
   `]
 })
 export class EnquiryListComponent implements OnInit {
   enquiries: Enquiry[] = [];
   baseEnquiries: Enquiry[] = []; // Store the base filtered results
   loading = true;
-  displayedColumns = ['title', 'type', 'status', 'createdBy', 'createdAt', 'actions'];
+  displayedColumns = ['title', 'type', 'status', 'createdBy', 'assignedTo', 'actions'];
 
   statusOptions = Object.values(EnquiryStatus);
   typeOptions = Object.values(EnquiryType);
