@@ -34,11 +34,11 @@ group|BusinessSupport|business-support
 
 # Users and their details
 # Format: user|username|email|firstName|lastName|password|group
-user|admin|admin@example.com|Admin|User|admin123|Admins
-user|manager1|manager1@example.com|Manager|One|manager123|Managers
-user|user1|user1@example.com|User|One|user123|Users
-user|analyst1|analyst1@example.com|Analyst|One|analyst123|Analysts
-user|tech1|tech1@example.com|Tech|Support|tech123|TechSupport
-user|tech2|tech2@example.com|Technical|Support|tech456|TechSupport
-user|business1|business1@example.com|Business|Support|business123|BusinessSupport
-user|business2|business2@example.com|Business|Analyst|business456|BusinessSupport
+user|smith|smith@example.com|Sarah|Smith|password123|Admins
+user|jones|jones@example.com|Michael|Jones|password123|Managers
+user|brown|brown@example.com|Jessica|Brown|password123|Users
+user|davis|davis@example.com|David|Davis|password123|Analysts
+user|miller|miller@example.com|Alex|Miller|password123|TechSupport
+user|wilson|wilson@example.com|Emily|Wilson|password123|TechSupport
+user|moore|moore@example.com|James|Moore|password123|BusinessSupport
+user|taylor|taylor@example.com|Lisa|Taylor|password123|BusinessSupport
