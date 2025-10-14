@@ -61,7 +61,6 @@ public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListe
         
         // Only handle transitions we care about
         if (!transitionHandlers.containsKey(transitionKey)) {
-            LOG.debug("Ignoring irrelevant transition: '{}'", transitionKey);
             return;
         }
         
@@ -69,8 +68,6 @@ public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListe
                 event.getUserTaskInstance().getId(), 
                 event.getOldStatus(), 
                 event.getNewStatus());
-        
-        LOG.debug("Processing relevant transition: '{}'", transitionKey);
         
         try {
             // Get handler from map and execute
@@ -111,14 +108,10 @@ public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListe
             throw new IllegalStateException("No process instance ID found in enquiry");
         }
         
-        LOG.debug("Looking for process instance with ID: {}", processInstanceId);
-        
         var processInstance = enquiryProcess.instances().findById(processInstanceId);
         if (processInstance.isEmpty()) {
             throw new IllegalStateException("Process instance not found: " + processInstanceId);
         }
-        
-        LOG.debug("Found process instance: {}", processInstanceId);
         return (ProcessInstance<?>) processInstance.get();
     }
     
@@ -175,7 +168,6 @@ public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListe
             Field enquiryField = processModel.getClass().getDeclaredField("enquiry");
             enquiryField.setAccessible(true);
             enquiryField.set(processModel, updatedEnquiry);
-            LOG.debug("Successfully updated enquiry in process model");
         } catch (NoSuchFieldException e) {
             LOG.error("Enquiry field not found in process model class: {}", processModel.getClass().getName(), e);
         } catch (IllegalAccessException e) {
@@ -195,7 +187,6 @@ public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListe
             
             ProcessInstance rawProcessInstance = (ProcessInstance) processInstance;
             rawProcessInstance.updateVariables(processModel);
-            LOG.debug("Successfully updated process instance with enquiry changes");
         } catch (Exception e) {
             LOG.error("Failed to update process instance variables: {}", e.getMessage(), e);
             throw e; // Re-throw as this is critical for process state

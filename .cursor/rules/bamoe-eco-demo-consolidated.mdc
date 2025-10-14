@@ -1,0 +1,346 @@
+---
+description: BAMOE Eco Demo - Consolidated Development Rules & Best Practices
+globs: ["**/*.java", "**/*.ts", "**/*.html", "**/*.scss", "**/*.properties", "**/*.bpmn", "**/*.dmn", "**/*.json", "**/*.yml", "**/*.yaml"]
+alwaysApply: true
+---
+
+# BAMOE Eco Demo - Consolidated Development Rules & Best Practices
+
+## 🏗️ Architecture Overview
+
+This is a **BAMOE (Business Automation Management Open Edition) 9.3.0-ibm-0007** ecosystem with:
+- **Backend**: Quarkus 3.20.1 + BAMOE process engine
+- **Frontend**: Angular 19 + Material Design
+- **Database**: PostgreSQL 17
+- **Auth**: Keycloak 24.0 (OIDC)
+- **API**: Spring Boot REST API (external resource)
+
+## 🎯 Core Principles
+
+### 1. **Data Flow Architecture**
+```
+Angular UI → Spring Boot API → PostgreSQL
+     ↓
+Quarkus BAMOE ← Process Variables ← Task Events
+```
+
+### 2. **ID Management Strategy**
+- **Enquiry ID**: Primary identifier for business entities (UUID)
+- **Process Instance ID**: BAMOE process execution identifier
+- **Task ID**: User task instance identifier
+- **Always use Enquiry ID** for Spring Boot API calls
+- **Use Process Instance ID** for BAMOE operations
+
+## 🚨 Common Mistakes to Avoid
+
+### ❌ **Data Structure Access Errors**
+```java
+// WRONG - enquiry is a direct property, not in variables
+processInstance.variables['enquiry']
+
+// CORRECT - enquiry is a direct property
+processInstance.enquiry
+```
+
+### ❌ **ID Confusion**
+```typescript
+// WRONG - using process instance ID as enquiry ID
+this.enquiryService.getEnquiryById(processInstanceId)
+
+// CORRECT - use enquiry ID from process instance
+this.enquiryService.getEnquiryById(processInstance.enquiry.id)
+```
+
+### ❌ **Node Type Mapping**
+```typescript
+// WRONG - incorrect BAMOE node types
+if (node.type === 'UserTask') // ❌
+if (node.type === 'ServiceTask') // ❌
+
+// CORRECT - actual BAMOE node types
+if (node.type === 'HumanTaskNode') // ✅
+if (node.type === 'WorkItemNode') // ✅
+```
+
+### ❌ **Redundant Logging**
+```java
+// WRONG - noisy debug logs
+LOG.debug("Ignoring irrelevant transition: '{}'", transitionKey);
+LOG.debug("Looking for process instance with ID: {}", processInstanceId);
+
+// CORRECT - only log important events
+LOG.info("Task state change detected - Task ID: {}", taskId);
+```
+
+## 🛠️ Backend Best Practices (Quarkus + BAMOE)
+
+### **Process Instance Management**
+```java
+// Always use wildcard generics for CDI injection
+@Inject
+@Named("EnquiryProcess")
+Process<?> enquiryProcess; // ✅ NOT Process<EnquiryProcess>
+
+// Access enquiry from process instance
+Enquiry enquiry = processInstance.enquiry; // ✅ Direct property access
+```
+
+### **Task Event Handling**
+```java
+// Use abstract factory pattern for task transitions
+@ApplicationScoped
+public abstract class EnquiryTaskTransitionFactory implements UserTaskEventListener {
+    
+    // Filter irrelevant transitions early
+    if (!transitionHandlers.containsKey(transitionKey)) {
+        return; // ✅ No logging for expected behavior
+    }
+    
+    // Only get process instance when needed
+    ProcessInstance<?> processInstance = getProcessInstanceFromTaskInput(event);
+}
+```
+
+### **Service Layer Patterns**
+```java
+// Keep services focused on business logic
+public Enquiry createEnquiry(Enquiry enquiry, KogitoProcessContext kcontext) {
+    // Set process instance ID
+    enquiry.setProcessInstanceId(kcontext.getProcessInstance().getId());
+    
+    // Delegate to external service
+    return enquiryGateway.createEnquiry(enquiry);
+}
+```
+
+### **Error Handling**
+```java
+// Use appropriate log levels
+LOG.error("Critical error: {}", error.getMessage(), error); // ✅
+LOG.warn("Non-critical issue: {}", warning); // ✅
+// Avoid: LOG.debug for normal operations
+```
+
+## 🎨 Frontend Best Practices (Angular 19)
+
+### **Component Architecture**
+```typescript
+// Use standalone components
+@Component({
+  selector: 'app-feature',
+  standalone: true,
+  imports: [CommonModule, MatCardModule],
+  template: `<!-- template -->`,
+  styles: [`/* styles */`]
+})
+export class FeatureComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>(); // ✅ Memory leak prevention
+  
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+```
+
+### **Data Fetching Strategy**
+```typescript
+// Primary: Spring Boot API
+this.enquiryService.getEnquiryById(enquiryId)
+  .pipe(takeUntil(this.destroy$))
+  .subscribe({
+    next: (enquiry) => this.enquiry = enquiry,
+    error: (error) => {
+      if (error.status === 404) {
+        // Fallback: BAMOE process instance
+        this.loadEnquiryFromBamoeProcess(processInstanceId);
+      }
+    }
+  });
+```
+
+### **Process Visualization**
+```typescript
+// Correct node status mapping
+private determineNodeStatus(node: any, processState: string): string {
+  if (processState === 'COMPLETED') return 'completed';
+  
+  if (node.type === 'HumanTaskNode') {
+    return node.actualOwner ? 'in_progress' : 'ready';
+  }
+  
+  if (node.type === 'WorkItemNode') return 'completed';
+  // ... other node types
+}
+```
+
+### **UI State Management**
+```typescript
+// Client-side filtering for better performance
+loadEnquiries(): void {
+  this.enquiryService.getEnquiries().subscribe({
+    next: (enquiries) => {
+      this.baseEnquiries = enquiries; // ✅ Store all data
+      this.enquiries = this.filterEnquiriesByStatus(enquiries, ['OPEN', 'IN_PROGRESS']);
+    }
+  });
+}
+```
+
+## 🔧 Configuration Best Practices
+
+### **Environment Variables**
+```properties
+# BAMOE Configuration
+kogito.persistence.type=jdbc
+kogito.persistence.proto.marshaller=false
+quarkus.jackson.write-dates-as-timestamps=false
+
+# OIDC Configuration
+quarkus.oidc.enabled=true
+quarkus.oidc.auth-server-url=http://localhost:9180/realms/quarkus-realm
+quarkus.oidc.client-id=quarkus-bamoe-frontend
+```
+
+### **CORS Configuration**
+```properties
+# Allow Angular frontend
+quarkus.http.cors.origins=http://localhost:4200
+quarkus.http.cors.headers=accept,authorization,content-type,x-requested-with
+quarkus.http.cors.methods=GET,POST,PUT,DELETE,OPTIONS
+```
+
+## 📊 Data Synchronization Patterns
+
+### **Task State Transitions**
+1. **User claims task** → Task event listener → Update enquiry status → Update process variables
+2. **User releases task** → Task event listener → Reset enquiry status → Update process variables
+3. **UI refreshes** → Fetch latest data from Spring Boot API
+
+### **Fallback Mechanisms**
+```typescript
+// 1. Try Spring Boot API first
+// 2. If 404, try BAMOE process instance
+// 3. If still not found, show error and redirect
+```
+
+## 🎨 UI/UX Patterns
+
+### **Color Schemes**
+```scss
+// Task status colors (consistent across components)
+.status-ready { color: #ff9800; }      // Orange for ready tasks
+.status-reserved { color: #2196f3; }   // Blue for claimed tasks
+.status-completed { color: #4caf50; }  // Green for completed tasks
+```
+
+### **Layout Patterns**
+```html
+<!-- Inline status and assignment info -->
+<div class="activity-status-line">
+  <span class="activity-status">ready</span>
+  <span class="assignment-info">
+    <mat-icon>group</mat-icon>
+    <span>Available to: Tech Support Group</span>
+  </span>
+</div>
+```
+
+## 🧹 Code Cleanup Guidelines
+
+### **Remove These Patterns**
+- ❌ `console.log()` statements in production code
+- ❌ Debug logs for normal operations
+- ❌ Redundant `.cursorrules` files (use `.cursor/rules/`)
+- ❌ Leftover compiled classes in `org/` directory
+- ❌ Hardcoded URLs and configuration values
+
+### **Keep These Patterns**
+- ✅ Error logging with context
+- ✅ INFO logs for important state changes
+- ✅ Proper error handling with user feedback
+- ✅ Environment-based configuration
+- ✅ Type safety throughout
+
+## 🔍 Debugging Strategies
+
+### **Common Issues & Solutions**
+1. **404 Errors**: Check ID mapping (enquiry vs process instance)
+2. **CORS Issues**: Verify Quarkus CORS configuration
+3. **Data Sync Issues**: Check task event listeners and process variables
+4. **UI Not Updating**: Verify change detection and subscription cleanup
+
+### **Logging Strategy**
+- **ERROR**: System failures, exceptions
+- **WARN**: Recoverable issues, fallbacks
+- **INFO**: Important business events (task claims, status changes)
+- **DEBUG**: Development debugging only
+
+## 📁 Project Structure
+
+```
+bamoe-eco-demo/
+├── .cursor/rules/                    # Consolidated rules
+├── quarkus-bamoe-app/               # BAMOE process engine
+│   ├── .cursor/rules/bamoe-quarkus.mdc
+│   └── src/main/java/com/example/bamoe/
+├── angula-bamoe-ui/                 # Angular frontend
+│   ├── .cursor/rules/angular.mdc
+│   └── src/app/
+└── spring-boot-api/                 # External REST API
+    └── src/main/java/com/example/springboot/
+```
+
+## 🚀 Performance Optimizations
+
+### **Frontend**
+- Use `OnPush` change detection where appropriate
+- Implement proper subscription cleanup
+- Use client-side filtering for better UX
+- Lazy load routes and components
+
+### **Backend**
+- Use connection pooling
+- Implement proper caching strategies
+- Optimize database queries
+- Use async processing where possible
+
+## 🔒 Security Considerations
+
+- Always use OIDC authentication in production
+- Validate user permissions for task operations
+- Sanitize user inputs
+- Use HTTPS in production
+- Implement proper CORS policies
+
+---
+
+## 📝 Quick Reference
+
+### **Key Commands**
+```bash
+# Backend
+./mvnw quarkus:dev
+./mvnw clean compile
+
+# Frontend
+npm start
+ng build --prod
+
+# Database
+docker-compose up -d postgres keycloak
+```
+
+### **Important URLs**
+- Frontend: http://localhost:4200
+- BAMOE API: http://localhost:8080
+- Spring Boot API: http://localhost:8081
+- Keycloak: http://localhost:9180
+
+### **Critical Files**
+- `application.properties` - BAMOE configuration
+- `environment.ts` - Angular configuration
+- `EnquiryProcess.bpmn` - Process definition
+- `TaskSupport.json` - Task form definition
+
+Remember: This is a **BAMOE ecosystem** - focus on process automation, decision management, and case management patterns!

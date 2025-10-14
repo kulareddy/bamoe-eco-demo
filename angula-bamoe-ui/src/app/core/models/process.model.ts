@@ -7,6 +7,7 @@ export interface ProcessInstance {
   endDate?: Date;
   initiator: string;
   variables: Record<string, any>;
+  enquiry?: any; // Enquiry object returned from BAMOE process creation
 }
 
 export interface Task {

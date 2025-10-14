@@ -69,15 +69,7 @@ export class ProcessService {
   }
 
   private mapBamoeTaskToTask(bamoeTask: any): Task {
-    console.log('ProcessService.mapBamoeTaskToTask: Mapping BAMOE task:', bamoeTask);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task inputs:', bamoeTask.inputs);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task enquiry:', bamoeTask.inputs?.enquiry);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task status:', bamoeTask.status);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task actualOwner:', bamoeTask.actualOwner);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task potentialGroups:', bamoeTask.potentialGroups);
-    console.log('ProcessService.mapBamoeTaskToTask: BAMOE task potentialUsers:', bamoeTask.potentialUsers);
-    
-    const mappedTask = {
+    return {
       id: bamoeTask.id,
       name: bamoeTask.taskName,
       description: bamoeTask.taskDescription,
@@ -85,23 +77,14 @@ export class ProcessService {
       assignee: bamoeTask.actualOwner,
       candidateGroups: bamoeTask.potentialGroups || [],
       candidateUsers: bamoeTask.potentialUsers || [],
-      created: new Date(), // BAMOE doesn't provide created date in this response
-      due: undefined, // BAMOE doesn't provide due date in this response
+      created: new Date(),
+      due: undefined,
       priority: bamoeTask.taskPriority || 0,
       status: this.mapBamoeStatusToTaskStatus(bamoeTask.status?.name),
       formKey: undefined,
       variables: bamoeTask.inputs || {},
-      // Store the external reference ID for TaskSupport endpoint
       externalReferenceId: bamoeTask.externalReferenceId
     };
-    
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task:', mappedTask);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task status:', mappedTask.status);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task assignee:', mappedTask.assignee);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task candidateGroups:', mappedTask.candidateGroups);
-    console.log('ProcessService.mapBamoeTaskToTask: Mapped task candidateUsers:', mappedTask.candidateUsers);
-    
-    return mappedTask;
   }
 
   private mapBamoeStatusToTaskStatus(bamoeStatus: string): any {
@@ -119,18 +102,9 @@ export class ProcessService {
   }
 
   getTaskById(taskId: string): Observable<Task> {
-    console.log('ProcessService.getTaskById: Calling usertasks endpoint:', `${this.apiUrl}/usertasks/instance/${taskId}`);
     return this.http.get<any>(`${this.apiUrl}/usertasks/instance/${taskId}`)
       .pipe(
-        map(bamoeTask => {
-          console.log('ProcessService.getTaskById: Raw usertasks response:', bamoeTask);
-          console.log('ProcessService.getTaskById: Enquiry in usertasks response:', bamoeTask.inputs?.enquiry);
-          console.log('ProcessService.getTaskById: Enquiry status in usertasks response:', bamoeTask.inputs?.enquiry?.status);
-          const mappedTask = this.mapBamoeTaskToTask(bamoeTask);
-          console.log('ProcessService.getTaskById: Mapped task:', mappedTask);
-          console.log('ProcessService.getTaskById: Enquiry status in mapped task:', mappedTask.variables?.['enquiry']?.status);
-          return mappedTask;
-        }),
+        map(bamoeTask => this.mapBamoeTaskToTask(bamoeTask)),
         catchError(error => {
           console.error('Error loading task:', error);
           throw error;
@@ -262,8 +236,6 @@ export class ProcessService {
   addProcessComment(processInstanceId: string, commentText: string): Observable<any> {
     // Send comment text as string to BAMOE process signal
     // User (userId, name, email) is automatically extracted from JWT token server-side
-    console.log('Sending comment signal to BAMOE:', commentText);
-    console.log('Endpoint:', `${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`);
 
     // Send signal with comment text as JSON string
     return this.http.post<any>(`${this.apiUrl}/EnquiryProcess/${processInstanceId}/comment`, JSON.stringify(commentText), {

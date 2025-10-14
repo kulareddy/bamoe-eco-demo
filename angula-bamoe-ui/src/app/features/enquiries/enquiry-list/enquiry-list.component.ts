@@ -71,8 +71,7 @@ import { Enquiry, EnquiryStatus, EnquiryType } from '../../../core/models/enquir
             </mat-form-field>
 
             <div class="filter-actions">
-              <button mat-button (click)="clearFilters()">Clear</button>
-              <button mat-raised-button color="primary" (click)="applyFilters()">Apply</button>
+              <button mat-button (click)="clearFilters()">Clear Filters</button>
             </div>
           </form>
         </mat-card-content>
@@ -319,14 +318,33 @@ export class EnquiryListComponent implements OnInit {
     ).subscribe(() => {
       this.applySearch();
     });
+
+    // Set up filter change listeners for status and type
+    this.filterForm.get('status')?.valueChanges.subscribe((statusValue) => {
+      this.applyFiltersWithValues(
+        statusValue || [], 
+        this.filterForm.get('type')?.value || [], 
+        this.filterForm.get('search')?.value || ''
+      );
+    });
+
+    this.filterForm.get('type')?.valueChanges.subscribe((typeValue) => {
+      this.applyFiltersWithValues(
+        this.filterForm.get('status')?.value || [], 
+        typeValue || [], 
+        this.filterForm.get('search')?.value || ''
+      );
+    });
   }
 
   loadEnquiries(): void {
     this.loading = true;
+    // Load all enquiries and filter on frontend
     this.enquiryService.getEnquiries().subscribe({
       next: (enquiries) => {
         this.baseEnquiries = enquiries;
-        this.enquiries = enquiries;
+        // Apply default filter to show only active enquiries
+        this.enquiries = this.filterEnquiriesByStatus(enquiries, ['OPEN', 'IN_PROGRESS']);
         this.loading = false;
       },
       error: (error) => {
@@ -338,34 +356,46 @@ export class EnquiryListComponent implements OnInit {
 
   applyFilters(): void {
     const filters = this.filterForm.value;
+    this.applyFiltersWithValues(
+      filters.status || [], 
+      filters.type || [], 
+      filters.search || ''
+    );
+  }
+
+  applyFiltersWithValues(statusValue: string[], typeValue: string[], searchValue: string): void {
     this.loading = true;
     
-    this.enquiryService.getEnquiries({
-      status: filters.status?.join(','),
-      type: filters.type?.join(',')
-    }).subscribe({
-      next: (enquiries) => {
-        this.baseEnquiries = enquiries;
-        this.enquiries = enquiries;
-        this.loading = false;
-        // Apply search to the filtered results
-        this.applySearch();
-      },
-      error: (error) => {
-        console.error('Error applying filters:', error);
-        this.loading = false;
-      }
-    });
+    // Start with all enquiries from baseEnquiries
+    let filteredEnquiries = [...this.baseEnquiries];
+    
+    // Apply status filter
+    if (statusValue && statusValue.length > 0) {
+      // User has explicitly selected status(es) - use only those
+      filteredEnquiries = this.filterEnquiriesByStatus(filteredEnquiries, statusValue);
+    } else {
+      // No status filter applied - default to active enquiries only
+      filteredEnquiries = this.filterEnquiriesByStatus(filteredEnquiries, ['OPEN', 'IN_PROGRESS']);
+    }
+    
+    // Apply type filter if selected
+    if (typeValue && typeValue.length > 0) {
+      filteredEnquiries = this.filterEnquiriesByType(filteredEnquiries, typeValue);
+    }
+    
+    this.enquiries = filteredEnquiries;
+    this.loading = false;
+    
+    // Apply search to the filtered results
+    this.applySearch();
   }
 
   applySearch(): void {
     const searchTerm = this.filterForm.get('search')?.value;
     
-    // Always start from base enquiries
-    this.enquiries = [...this.baseEnquiries];
-    
+    // Don't reset to baseEnquiries - work with current filtered results
     if (!searchTerm || !searchTerm.trim()) {
-      return; // No search term, show all base results
+      return; // No search term, keep current filtered results
     }
 
     const searchLower = searchTerm.toLowerCase().trim();
@@ -379,10 +409,25 @@ export class EnquiryListComponent implements OnInit {
 
   clearFilters(): void {
     this.filterForm.reset();
-    this.loadEnquiries();
+    // Clear filters should show active enquiries only (same as default load)
+    this.enquiries = this.filterEnquiriesByStatus(this.baseEnquiries, ['OPEN', 'IN_PROGRESS']);
+    this.applySearch();
   }
 
   getStatusClass(status: EnquiryStatus): string {
     return `status-chip ${status.toLowerCase().replace('_', '-')}`;
   }
+
+  private filterEnquiriesByStatus(enquiries: Enquiry[], statuses: string[]): Enquiry[] {
+    return enquiries.filter(enquiry => 
+      statuses.includes(enquiry.status)
+    );
+  }
+
+  private filterEnquiriesByType(enquiries: Enquiry[], types: string[]): Enquiry[] {
+    return enquiries.filter(enquiry => 
+      types.includes(enquiry.type)
+    );
+  }
+
 }

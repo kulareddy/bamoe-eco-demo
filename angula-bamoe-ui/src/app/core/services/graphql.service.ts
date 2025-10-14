@@ -138,8 +138,6 @@ export class GraphQLService {
             id
             name
             type
-            enter
-            exit
             definitionId
             nodeId
             slaDueDate
@@ -189,6 +187,7 @@ export class GraphQLService {
           throw new Error('No data returned from GraphQL query');
         }
         
+        
         // Transform BAMOE GraphQL response to our interface
         const processInstance = response.data.ProcessInstances?.[0];
         const userTasks = response.data.UserTaskInstances || [];
@@ -208,9 +207,9 @@ export class GraphQLService {
             id: node.id,
             name: node.name,
             type: node.type,
-            status: node.exit ? 'completed' : 'active',
-            startTime: node.enter,
-            endTime: node.exit,
+            status: this.determineNodeStatus(node, processInstance?.state),
+            startTime: undefined,
+            endTime: undefined,
             assignee: node.actualOwner
           })) || [],
           userTasks: userTasks.map((task: any) => ({
@@ -260,9 +259,7 @@ export class GraphQLService {
       variables: { processInstanceId }
     }).pipe(
       map(response => {
-        console.log('GraphQL response for process instance:', response);
         if (!response?.data?.ProcessInstances || response.data.ProcessInstances.length === 0) {
-          console.warn('No process instance found in GraphQL response');
           return null;
         }
         return response.data.ProcessInstances[0];
@@ -312,5 +309,46 @@ export class GraphQLService {
     }).pipe(
       map(response => response.data.svg)
     );
+  }
+
+  private determineNodeStatus(node: any, processState: string): string {
+    // If the process is completed, all nodes are completed
+    if (processState === 'COMPLETED') {
+      return 'completed';
+    }
+
+    // For user tasks (HumanTaskNode), determine status based on node properties
+    if (node.type === 'HumanTaskNode') {
+      // If there's an actualOwner, the task is claimed/in progress
+      if (node.actualOwner) {
+        return 'in_progress';
+      }
+      // If no actualOwner but task exists, it's ready
+      return 'ready';
+    }
+
+    // For service tasks (WorkItemNode) and other node types
+    if (node.type === 'WorkItemNode') {
+      // Service tasks are typically completed if they appear in the nodes list
+      return 'completed';
+    }
+
+    // For start nodes
+    if (node.type === 'StartNode') {
+      return 'completed';
+    }
+
+    // For rule set nodes (DMN decisions)
+    if (node.type === 'RuleSetNode') {
+      return 'completed';
+    }
+
+    // For link nodes (throw/catch)
+    if (node.type === 'ThrowLinkNode' || node.type === 'CatchLinkNode') {
+      return 'completed';
+    }
+
+    // Default status for other node types
+    return 'completed';
   }
 }

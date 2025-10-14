@@ -133,7 +133,6 @@ export class AuthService implements IAuthService {
   private async loadUserInfo(): Promise<void> {
     try {
       const claims = this.oauthService.getIdentityClaims();
-      console.log('Raw claims from token:', claims);
       
       if (claims) {
         const userInfo: UserInfo = {
@@ -148,10 +147,7 @@ export class AuthService implements IAuthService {
           groups: this.extractGroups(claims),
           ...claims
         };
-        console.log('Processed user info:', userInfo);
         this.userInfo$.next(userInfo);
-      } else {
-        console.log('No claims available from token');
       }
     } catch (error) {
       console.error('Failed to load user info:', error);
@@ -316,24 +312,14 @@ export class AuthService implements IAuthService {
   getCurrentUser(): User | null {
     const userInfo = this.userInfo$.value;
     if (!userInfo) {
-      console.log('No user info available');
       return null;
     }
     
-    console.log('User info from token:', userInfo);
-    console.log('User sub:', userInfo.sub);
-    console.log('User preferred_username:', userInfo.preferred_username);
-    console.log('User name:', userInfo.name);
-    console.log('User email:', userInfo.email);
-    
-    const user: User = {
+    return {
       userId: userInfo.preferred_username || userInfo.sub || '',
       name: userInfo.name || userInfo.preferred_username || 'Unknown User',
       email: userInfo.email || '',
       roles: userInfo.roles || []
     };
-    
-    console.log('Mapped user - userId:', user.userId, 'name:', user.name, 'email:', user.email);
-    return user;
   }
 }

@@ -62,6 +62,61 @@ public class EnquiryService {
     }
 
     @Transactional(readOnly = true)
+    public List<Enquiry> findWithFilters(String status, String type, String assignedTo) {
+        List<Enquiry> allEnquiries = repository.findAll();
+        System.out.println("Filtering enquiries - Status: " + status + ", Type: " + type + ", AssignedTo: " + assignedTo);
+        System.out.println("Total enquiries before filtering: " + allEnquiries.size());
+        System.out.println("All enquiry statuses in DB: " + allEnquiries.stream().map(e -> e.getId() + "=" + e.getStatus().name()).collect(java.util.stream.Collectors.toList()));
+        
+        List<Enquiry> filtered = allEnquiries.stream()
+                .filter(enquiry -> {
+                    if (status == null || status.isEmpty()) {
+                        return true;
+                    }
+                    List<String> statusList = java.util.Arrays.stream(status.split(","))
+                            .map(String::trim)
+                            .map(String::toUpperCase)
+                            .collect(java.util.stream.Collectors.toList());
+                    String enquiryStatus = enquiry.getStatus().name().toUpperCase();
+                    boolean matches = statusList.contains(enquiryStatus);
+                    System.out.println("Enquiry " + enquiry.getId() + " status " + enquiry.getStatus().name() + " (normalized: " + enquiryStatus + ") matches " + statusList + ": " + matches);
+                    return matches;
+                })
+                .filter(enquiry -> type == null || type.isEmpty() || 
+                        java.util.Arrays.stream(type.split(","))
+                                .map(String::trim)
+                                .collect(java.util.stream.Collectors.toList())
+                                .contains(enquiry.getType().name()))
+                .filter(enquiry -> assignedTo == null || assignedTo.isEmpty() || 
+                        (enquiry.getAssignee() != null && 
+                         (enquiry.getAssignee().getUserId().equals(assignedTo) || 
+                          enquiry.getAssignee().getName().equals(assignedTo))))
+                .collect(java.util.stream.Collectors.toList());
+        
+        System.out.println("Filtered enquiries count: " + filtered.size());
+        
+        // Test the filtering logic
+        System.out.println("=== FILTERING TEST ===");
+        System.out.println("Requested statuses: " + (status == null ? "null" : status));
+        if (status != null && !status.isEmpty()) {
+            List<String> requestedStatuses = java.util.Arrays.stream(status.split(","))
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .collect(java.util.stream.Collectors.toList());
+            System.out.println("Normalized requested statuses: " + requestedStatuses);
+            
+            for (Enquiry enquiry : allEnquiries) {
+                String enquiryStatus = enquiry.getStatus().name().toUpperCase();
+                boolean shouldMatch = requestedStatuses.contains(enquiryStatus);
+                System.out.println("Enquiry " + enquiry.getId() + " with status " + enquiry.getStatus().name() + " should match: " + shouldMatch);
+            }
+        }
+        System.out.println("=== END FILTERING TEST ===");
+        
+        return filtered;
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Enquiry> findById(UUID id) {
         return repository.findById(id);
     }

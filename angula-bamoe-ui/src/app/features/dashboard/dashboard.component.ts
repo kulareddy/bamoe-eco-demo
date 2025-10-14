@@ -143,9 +143,21 @@ interface DashboardStats {
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       margin-bottom: 32px;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .stat-card {
@@ -350,8 +362,6 @@ export class DashboardComponent implements OnInit {
     // Load enquiries first, then try to load tasks (which may not be available)
     this.enquiryService.getEnquiries().subscribe({
       next: (allEnquiries) => {
-        console.log('Dashboard - All enquiries received:', allEnquiries);
-        console.log('Dashboard - First enquiry reporter:', allEnquiries[0]?.reporter);
         this.recentEnquiries = allEnquiries.slice(0, 5); // Get recent 5 enquiries
         
         // Try to load tasks, but don't fail if the endpoint doesn't exist
@@ -377,10 +387,16 @@ export class DashboardComponent implements OnInit {
   private calculateStats(enquiries: Enquiry[], tasks: Task[]): void {
     this.stats = {
       totalEnquiries: enquiries.length,
-      openEnquiries: enquiries.filter(e => e.status === EnquiryStatus.OPEN).length,
+      openEnquiries: this.getOpenEnquiries(enquiries),
       myTasks: tasks.length,
       completedToday: this.getCompletedToday(enquiries)
     };
+  }
+
+  private getOpenEnquiries(enquiries: Enquiry[]): number {
+    return enquiries.filter(e => 
+      e.status === EnquiryStatus.OPEN || e.status === EnquiryStatus.IN_PROGRESS
+    ).length;
   }
 
   private getCompletedToday(enquiries: Enquiry[]): number {
@@ -388,7 +404,7 @@ export class DashboardComponent implements OnInit {
     today.setHours(0, 0, 0, 0);
     
     return enquiries.filter(e => {
-      if (!e.updatedAt || e.status !== EnquiryStatus.RESOLVED) {
+      if (!e.updatedAt || (e.status !== EnquiryStatus.RESOLVED && e.status !== EnquiryStatus.CLOSED && e.status !== EnquiryStatus.CANCELLED)) {
         return false;
       }
       const updatedDate = new Date(e.updatedAt);

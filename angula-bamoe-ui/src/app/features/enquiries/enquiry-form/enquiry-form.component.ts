@@ -284,8 +284,6 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
 
     // Create enquiry through BAMOE process
     // Reporter user (userId, name, email) is automatically extracted from JWT token server-side
-    console.log('Creating enquiry for user:', currentUser.name, '(', currentUser.userId, ')');
-    console.log('Enquiry data:', enquiryData);
 
     // Create enquiry through BAMOE process (reporter auto-populated from JWT token)
     this.processService.createEnquiry(enquiryData)
@@ -293,9 +291,15 @@ export class EnquiryFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (processInstance) => {
           this.snackBar.open('Enquiry created successfully!', 'Close', { duration: 3000 });
-          // The process instance ID is the glue between Spring Boot and BAMOE
-          // Navigate to enquiry detail - use process instance ID to fetch enquiry
-          this.router.navigate(['/enquiries', processInstance.id]);
+          
+          // The processInstance has the enquiry directly as a property
+          // Navigate to enquiry detail using the enquiry ID from the process instance
+          if (processInstance.enquiry && processInstance.enquiry.id) {
+            this.router.navigate(['/enquiries', processInstance.enquiry.id]);
+          } else {
+            // Fallback to process instance ID if enquiry ID is not available
+            this.router.navigate(['/enquiries', processInstance.id]);
+          }
         },
         error: (error) => {
           console.error('Error creating enquiry:', error);

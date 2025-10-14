@@ -117,14 +117,14 @@ interface ProcessNode {
                       <mat-icon class="activity-icon">{{ getActivityIcon(activity) }}</mat-icon>
                       <div class="activity-details">
                         <div class="activity-name">{{ activity.name }}</div>
-                        <div class="activity-status">{{ activity.status }}</div>
-                        <!-- Show group/user info for Task Support activities -->
-                        <div *ngIf="isTaskSupportActivity(activity)" class="activity-assignment">
-                          <span *ngIf="activity.status === 'Ready'" class="assignment-info">
+                        <div class="activity-status-container">
+                          <div class="activity-status">{{ activity.status }}</div>
+                          <!-- Show group/user info for Task Support activities on the same line as status -->
+                          <span *ngIf="isTaskSupportActivity(activity) && activity.status === 'ready'" class="assignment-info">
                             <mat-icon class="assignment-icon">group</mat-icon>
                             <span class="assignment-text">Available to: Tech Support Group</span>
                           </span>
-                          <span *ngIf="activity.status === 'Reserved' && activity.assignee" class="assignment-info">
+                          <span *ngIf="isTaskSupportActivity(activity) && activity.status === 'in_progress' && activity.assignee" class="assignment-info">
                             <mat-icon class="assignment-icon">person</mat-icon>
                             <span class="assignment-text">Assigned to: {{ activity.assignee }}</span>
                           </span>
@@ -260,7 +260,6 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('Loading process visualization data via GraphQL');
     this.loadProcessDataViaGraphQL();
   }
 
@@ -270,19 +269,10 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (schema) => {
-          console.log('BAMOE GraphQL Schema:', schema);
-          if (schema?.__schema?.queryType?.fields) {
-            console.log('Available Query Fields:', schema.__schema.queryType.fields.map((f: any) => f.name));
-          }
-          if (schema?.__schema?.types) {
-            const processTypes = schema.__schema.types.filter((t: any) => 
-              t.name && (t.name.toLowerCase().includes('process') || t.name.toLowerCase().includes('task'))
-            );
-            console.log('Process-related Types:', processTypes.map((t: any) => t.name));
-          }
+          // Schema exploration for future implementation
         },
         error: (error) => {
-          console.error('Error exploring GraphQL schema:', error);
+          // Schema exploration for future implementation
         }
       });
   }
@@ -293,8 +283,6 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data: ProcessVisualizationData) => {
-          console.log('GraphQL Response:', data);
-          
           // Process SVG - with null check
           this.processSvg = data?.svg || null;
           if (this.processSvg) {
@@ -317,22 +305,17 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
           // Process variables from process instance - with null check
           this.processVariables = data?.processInstance?.variables || {};
           
-          console.log('Process Variables from GraphQL:', this.processVariables);
-          console.log('Process Variables keys:', Object.keys(this.processVariables));
           
           // Extract comments from enquiry object in process variables
           if (this.processVariables?.enquiry?.comments) {
             this.comments = this.processVariables.enquiry.comments;
-            console.log('Loaded comments from GraphQL variables:', this.comments);
           } else {
             this.comments = [];
-            console.log('No comments found in GraphQL variables');
           }
           
           this.loading = false;
         },
         error: (error) => {
-          console.error('❌ Error loading process data via GraphQL:', error);
           this.loading = false;
         }
       });
@@ -396,7 +379,8 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
     
     const status = activity.status.toLowerCase();
     if (status.includes('completed') || status.includes('finished')) return 'completed';
-    if (status.includes('active') || status.includes('running')) return 'active';
+    if (status.includes('active') || status.includes('running') || status.includes('in_progress')) return 'active';
+    if (status.includes('ready')) return 'ready';
     if (status.includes('error') || status.includes('failed')) return 'error';
     return 'status-unknown';
   }
@@ -469,26 +453,20 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
   loadComments(): void {
     if (!this.processInstanceId) return;
 
-    console.log('Refreshing comments for process:', this.processInstanceId);
 
     // Use GraphQL to get updated process variables
     this.graphqlService.getProcessInstanceWithVariables(this.processInstanceId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (processInstance) => {
-          console.log('GraphQL process instance received for comment refresh');
-          
           if (processInstance?.variables?.enquiry?.comments) {
             this.comments = processInstance.variables.enquiry.comments;
             this.processVariables = processInstance.variables; // Update cached variables
-            console.log('✅ Loaded', this.comments.length, 'comments from GraphQL');
           } else {
             this.comments = [];
-            console.log('⚠️ No comments found in GraphQL variables');
           }
         },
         error: (error) => {
-          console.error('❌ Error loading comments via GraphQL:', error);
           this.comments = [];
         }
       });
@@ -504,7 +482,6 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
     const currentUser = this.authService.getCurrentUser();
     
     if (!currentUser) {
-      console.error('No user information available from token');
       this.addingComment = false;
       return;
     }
@@ -513,7 +490,6 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
     // User information (userId, name, email) is automatically extracted from JWT token server-side
     const commentText = this.newComment.trim();
     
-    console.log('Adding comment by user:', currentUser.name, '(', currentUser.userId, ')');
 
     this.processService.addProcessComment(this.processInstanceId, commentText)
       .pipe(
@@ -525,12 +501,10 @@ export class ProcessVisualizationComponent implements OnInit, OnDestroy {
         next: () => {
           this.newComment = '';
           this.addingComment = false;
-          console.log('Comment added successfully, refreshing comments...');
           // Refresh comments list after delay
           this.loadComments();
         },
         error: (error) => {
-          console.error('Error adding comment:', error);
           this.addingComment = false;
         }
       });

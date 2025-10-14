@@ -21,7 +21,7 @@ export function initializeKeycloak(): () => Promise<boolean> {
       });
 
       if (authenticated) {
-        console.log('User is authenticated');
+        // User is authenticated
       }
 
       return authenticated;

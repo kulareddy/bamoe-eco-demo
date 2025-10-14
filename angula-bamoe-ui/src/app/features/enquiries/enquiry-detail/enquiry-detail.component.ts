@@ -22,7 +22,7 @@ import { ProcessService } from '../../../core/services/process.service';
 import { GraphQLService } from '../../../core/services/graphql.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Enquiry, EnquiryStatus } from '../../../core/models/enquiry.model';
-import { ProcessInstance, Task } from '../../../core/models/process.model';
+import { ProcessInstance, Task, ProcessStatus } from '../../../core/models/process.model';
 import { ProcessVisualizationComponent } from '../../../shared/components/process-visualization/process-visualization.component';
 
 // Notes Dialog Component
@@ -496,36 +496,54 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
 
   private loadEnquiry(id: string): void {
     this.loading = true;
-    console.log('Loading enquiry by ID:', id);
     
-    // Use enquiry ID directly - let Spring Boot API handle the mapping
     this.enquiryService.getEnquiryById(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (enquiry) => {
-          console.log('Enquiry received by ID:', enquiry);
-          console.log('Process Instance ID:', enquiry.processInstanceId);
-          console.log('Reporter:', enquiry.reporter);
-          console.log('Reporter Name:', enquiry.reporter?.name);
-          console.log('Reporter User ID:', enquiry.reporter?.userId);
-          console.log('Reporter Email:', enquiry.reporter?.email);
-          
-          // Check if user information is properly populated
-          if (!enquiry.reporter?.name) {
-            console.warn('No reporter name found in enquiry:', enquiry);
-          }
-          
           this.enquiry = enquiry;
-          
-          // Use enquiry ID for process info - Spring Boot will handle the mapping
           this.loadProcessInfo(id);
-          
           this.loading = false;
         },
         error: (error) => {
-          console.error('Error loading enquiry by ID:', error);
+          if (error.status === 404) {
+            // If enquiry not found by ID, try to get it from BAMOE process instance
+            this.loadEnquiryFromBamoeProcess(id);
+          } else {
+            this.loading = false;
+            this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
+          }
+        }
+      });
+  }
+
+  private loadEnquiryFromBamoeProcess(processInstanceId: string): void {
+    // Try to get the enquiry from the BAMOE process instance variables
+    this.processService.getProcessById(processInstanceId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (processInstance) => {
+          // Extract enquiry from process instance (it's a direct property, not in variables)
+          if (processInstance.enquiry) {
+            const enquiry = processInstance.enquiry;
+            this.enquiry = enquiry;
+            this.loadProcessInfo(processInstanceId);
+            this.loading = false;
+          } else {
+            this.loading = false;
+            this.snackBar.open('Enquiry not found in process instance', 'Close', { duration: 5000 });
+            setTimeout(() => {
+              this.router.navigate(['/enquiries']);
+            }, 2000);
+          }
+        },
+        error: (error) => {
+          console.error('Error loading process instance:', error);
           this.loading = false;
-          this.snackBar.open('Error loading enquiry', 'Close', { duration: 3000 });
+          this.snackBar.open('Enquiry not found. It may have been deleted or the URL is incorrect.', 'Close', { duration: 5000 });
+          setTimeout(() => {
+            this.router.navigate(['/enquiries']);
+          }, 2000);
         }
       });
   }
@@ -533,6 +551,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
   private loadProcessInfo(enquiryId: string): void {
     // Use enquiry ID - Spring Boot API will handle the mapping to process instance
     if (this.enquiry?.processInstanceId) {
+      // Try REST endpoint first for active processes
       this.processService.getProcessById(this.enquiry.processInstanceId)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
@@ -543,8 +562,14 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
             this.loading = false;
           },
           error: (error) => {
-            console.error('Error loading process info:', error);
-            this.loading = false;
+            // If REST endpoint fails (e.g., completed process), try GraphQL directly
+            if (this.enquiry?.processInstanceId) {
+              console.warn('REST endpoint failed, trying GraphQL for completed process. Process ID:', this.enquiry.processInstanceId, 'Error:', error);
+              this.loadProcessInfoFromGraphQL(this.enquiry.processInstanceId);
+            } else {
+              console.error('No process instance ID available for GraphQL fallback');
+              this.loading = false;
+            }
           }
         });
     } else {
@@ -553,34 +578,83 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  private loadProcessInfoFromGraphQL(processInstanceId: string): void {
+    // Use GraphQL for completed processes or when REST endpoint fails
+    console.log('Loading process info from GraphQL for process ID:', processInstanceId);
+    this.graphqlService.getProcessVisualizationData(processInstanceId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: any) => {
+          console.log('GraphQL data received for completed process:', data);
+          // Create a mock process instance from GraphQL data
+          this.processInstance = {
+            id: data.processInstance?.id || processInstanceId,
+            processId: data.processInstance?.processId || 'EnquiryProcess',
+            processName: data.processInstance?.processName || 'Enquiry Process',
+            status: this.mapGraphQLProcessState(data.processInstance?.state) || ProcessStatus.COMPLETED,
+            startDate: data.processInstance?.start ? new Date(data.processInstance.start) : new Date(),
+            endDate: data.processInstance?.end ? new Date(data.processInstance.end) : new Date(),
+            initiator: data.processInstance?.createdBy || 'System',
+            variables: data.processInstance?.variables || {}
+          };
+          
+          // Load tasks from the same GraphQL data
+          this.loadTasksFromGraphQLData(data);
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading process info from GraphQL:', error);
+          // If GraphQL also fails, show a message that the process is completed
+          this.processInstance = {
+            id: processInstanceId,
+            processId: 'EnquiryProcess',
+            processName: 'Enquiry Process',
+            status: ProcessStatus.COMPLETED,
+            startDate: new Date(),
+            endDate: new Date(),
+            initiator: 'System',
+            variables: {}
+          };
+          this.tasks = [];
+          this.loading = false;
+        }
+      });
+  }
+
   private loadTasksFromGraphQL(processId: string): void {
     // Use GraphQL to get task data directly from process visualization
     this.graphqlService.getProcessVisualizationData(processId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data: any) => {
-          // Extract user tasks from GraphQL response
-          const userTasks = data?.userTasks || [];
-          this.tasks = userTasks.map((task: any) => ({
-            id: task.id,
-            name: task.name || 'Task',
-            description: task.description || '',
-            status: this.mapGraphQLTaskState(task.state),
-            assignee: task.actualOwner || null,
-            processInstanceId: processId,
-            created: task.started ? new Date(task.started) : new Date(),
-            due: task.completed ? new Date(task.completed) : undefined,
-            priority: 0,
-            formKey: undefined,
-            variables: {},
-            externalReferenceId: undefined
-          }));
+          this.loadTasksFromGraphQLData(data);
         },
         error: (error: any) => {
           console.error('Error loading tasks from GraphQL:', error);
           this.tasks = [];
         }
       });
+  }
+
+  private loadTasksFromGraphQLData(data: any): void {
+    // Extract user tasks from GraphQL response
+    const userTasks = data?.userTasks || [];
+    const processId = data?.processInstance?.id || this.enquiry?.processInstanceId;
+    
+    this.tasks = userTasks.map((task: any) => ({
+      id: task.id,
+      name: task.name || 'Task',
+      description: task.description || '',
+      status: this.mapGraphQLTaskState(task.state),
+      assignee: task.actualOwner || null,
+      processInstanceId: processId,
+      created: task.started ? new Date(task.started) : new Date(),
+      due: task.completed ? new Date(task.completed) : undefined,
+      priority: 0,
+      formKey: undefined,
+      variables: {},
+      externalReferenceId: undefined
+    }));
   }
 
   private mapGraphQLTaskState(state: string): string {
@@ -593,6 +667,17 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
       case 'failed': return 'FAILED';
       case 'error': return 'ERROR';
       default: return state || 'UNKNOWN';
+    }
+  }
+
+  private mapGraphQLProcessState(state: string): ProcessStatus {
+    // Map GraphQL process states to our frontend ProcessStatus enum
+    switch (state?.toLowerCase()) {
+      case 'active': return ProcessStatus.ACTIVE;
+      case 'completed': return ProcessStatus.COMPLETED;
+      case 'aborted': return ProcessStatus.ABORTED;
+      case 'suspended': return ProcessStatus.SUSPENDED;
+      default: return ProcessStatus.COMPLETED;
     }
   }
 
@@ -720,8 +805,7 @@ export class EnquiryDetailComponent implements OnInit, OnDestroy {
   }
 
   canReopenEnquiry(): boolean {
-    return this.enquiry?.status === EnquiryStatus.CANCELLED || 
-           this.enquiry?.status === EnquiryStatus.CLOSED;
+    return this.enquiry?.status === EnquiryStatus.CANCELLED;
   }
 
   canCloseEnquiry(): boolean {
