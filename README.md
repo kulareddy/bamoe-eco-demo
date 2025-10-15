@@ -4,7 +4,7 @@
 
 ## Architecture
 
-![BAMOE Component Architecture](docs/componets.jpeg)
+![BAMOE Component Architecture](docs/components.jpeg)
 
 ## Quick Start
 
