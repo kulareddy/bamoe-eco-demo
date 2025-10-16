@@ -6,7 +6,7 @@
 set -e
 
 # Get database and user info from environment variables
-DB_NAME=${DB_NAME:-quarkus_bamoe}
+DB_NAME=${DB_NAME:-enquiry-process}
 DB_USER=${DB_USER:-quarkus}
 ENQUIRY_DB_NAME=${ENQUIRY_DB_NAME:-enquiry-db}
 
