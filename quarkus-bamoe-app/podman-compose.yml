@@ -1,0 +1,198 @@
+name: quarkus-bamoe
+
+services:
+  # BAMOE Maven Repository
+  bamoe-maven-repo:
+    # image: quay.io/bamoe/maven-repository:9.2.1-ibm-0005
+    image: quay.io/bamoe/maven-repository:9.3.0-ibm-0007
+    container_name: bamoe-maven-repo
+    ports:
+      - "${MAVEN_REPO_PORT:-9080}:8080"
+    networks:
+      - quarkus-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # PostgreSQL Database
+  quarkus-postgres:
+    image: postgres:17-alpine
+    container_name: quarkus-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      ENQUIRY_DB_NAME: ${ENQUIRY_DB_NAME:-enquiry-db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    networks:
+      - quarkus-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-quarkus} -d ${DB_NAME:-quarkus_bamoe}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Apache Zookeeper (Strimzi)
+  zookeeper:
+    image: quay.io/strimzi/kafka:0.39.0-kafka-3.6.0
+    container_name: strimzi-zookeeper
+    command: ["sh", "-c", "bin/zookeeper-server-start.sh config/zookeeper.properties"]
+    environment:
+      LOG_DIR: /tmp/logs
+    ports:
+      - "${ZOOKEEPER_PORT:-2181}:2181"
+    networks:
+      - quarkus-network
+
+  # Apache Kafka (Strimzi)
+  kafka:
+    image: quay.io/strimzi/kafka:0.39.0-kafka-3.6.0
+    container_name: strimzi-kafka
+    command: ["sh", "-c", "bin/kafka-server-start.sh config/server.properties --override zookeeper.connect=zookeeper:2181 --override listeners=PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092 --override advertised.listeners=PLAINTEXT://localhost:9092,INTERNAL://kafka:29092 --override listener.security.protocol.map=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT --override inter.broker.listener.name=INTERNAL --override offsets.topic.replication.factor=1"]
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "29092:29092"
+    environment:
+      LOG_DIR: /tmp/logs
+    networks:
+      - quarkus-network
+
+  # Keycloak IdP
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: quarkus-keycloak
+    command: ["start-dev"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-9180}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-9180}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - quarkus-network
+
+  # Keycloak RBAC Setup
+  keycloak-rbac-setup:
+    image: alpine:latest
+    container_name: keycloak-rbac-setup
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KEYCLOAK_REALM_NAME: ${KEYCLOAK_REALM_NAME:-quarkus-realm}
+    volumes:
+      - ./docker/keycloak:/scripts
+    command: >
+      sh -c "
+        apk add --no-cache curl jq &&
+        /scripts/docker-setup.sh
+      "
+    networks:
+      - quarkus-network
+    restart: "no"
+
+
+  # BAMOE Management Console - Configured to connect directly to Quarkus app
+  bamoe-management-console:
+    image: quay.io/bamoe/management-console:9.3.0-ibm-0007
+    container_name: bamoe-management-console
+    ports:
+      - "${MANAGEMENT_CONSOLE_PORT:-9280}:8080"
+    environment:
+      # BAMOE Management Console Configuration
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_APP_NAME: "${BAMOE_MANAGEMENT_CONSOLE_APP_NAME:-BAMOE Management Console}"
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_OIDC_CLIENT_CLIENT_ID: "${BAMOE_MANAGEMENT_CONSOLE_CLIENT_ID:-bamoe-management-console}"
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_OIDC_CLIENT_DEFAULT_SCOPES: "${BAMOE_MANAGEMENT_CONSOLE_DEFAULT_SCOPES:-openid email profile}"
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_OIDC_CLIENT_DEFAULT_AUDIENCE: ""
+
+      RUNTIME_TOOLS_MANAGEMENT_CONSOLE_MANAGED_BUSINESS_SERVICES: >-
+        [
+          {
+            "name": "Quarkus BAMOE App",
+            "businessServiceUrl": "http://localhost:8080",
+            "scope": "openid email profile"
+          }
+        ]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      - quarkus-network
+
+  # Quarkus BAMOE Application
+  quarkus-bamoe-app:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: quarkus-bamoe-app
+    image: quarkus-bamoe-app:latest
+    ports:
+      - "${KOGITO_SERVICE_PORT:-8080}:8080"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC: business-events
+      KAFKA_CONSUMER_GROUP: quarkus-bamoe-app
+
+      KOGITO_JOBS-SERVICE_URL: http://quarkus-bamoe-app:8080/
+      KOGITO_INDEX-SERVICE_URL: http://quarkus-bamoe-app:8080/
+      KOGITO_SERVICE_URL: http://quarkus-bamoe-app:8080/
+
+      DB_HOST: quarkus-postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-enquiry-process}
+      DB_USER: ${DB_USER:-quarkus}
+      DB_PASSWORD: ${DB_PASSWORD:-quarkus}
+
+
+      OIDC_AUTH_SERVER_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM_NAME:-quarkus-realm}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-quarkus-bamoe-app}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-quarkus-bamoe-secret}
+      OAUTH_SCOPE: ${OAUTH_SCOPE:-openid profile email}
+    depends_on:
+      - kafka
+      - quarkus-postgres
+      - keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/q/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - quarkus-network
+    profiles: ["container"]
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  quarkus-network:
+    name: quarkus-network
+    driver: bridge
