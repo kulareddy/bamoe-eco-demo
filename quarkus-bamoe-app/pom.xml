@@ -131,6 +131,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy-client-oidc-token-propagation</artifactId>
         </dependency>
+         <dependency>
+            <groupId>io.quarkiverse.oidc-proxy</groupId>
+            <artifactId>quarkus-oidc-proxy</artifactId>
+            <version>0.2.2</version>
+        </dependency>
         <!-- Security Dependencies END -->
         
         <!-- Core Quarkus Dependencies -->

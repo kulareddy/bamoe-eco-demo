@@ -142,7 +142,8 @@ services:
           {
             "name": "Quarkus BAMOE App",
             "businessServiceUrl": "http://localhost:8080",
-            "scope": "openid email profile"
+            "clientId": "${OIDC_CLIENT_ID:-quarkus-bamoe-app}",
+            "scope": "${OAUTH_SCOPE:-openid email profile}"
           }
         ]
     depends_on:
